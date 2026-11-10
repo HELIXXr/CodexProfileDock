@@ -11,6 +11,7 @@ try {
     Add-Type -AssemblyName System.Windows.Forms,System.Drawing
     [Windows.Forms.Application]::EnableVisualStyles()
     $engine = Join-Path $PSScriptRoot 'Switch-Codex.ps1'
+    . (Join-Path $PSScriptRoot 'Desktop-Restart.ps1')
     $form = New-Object Windows.Forms.Form
     $form.SuspendLayout()
     $form.Text = 'Codex Profile Dock'
@@ -78,7 +79,7 @@ try {
     $empty.BackColor = $list.BackColor
     $empty.ForeColor = $muted
     $empty.BringToFront()
-    $switch = Add-Button $card '切换所选账号' 16 141 438 32 $accent $paper
+    $switch = Add-Button $card '切换并重开 Codex' 16 141 438 32 $accent $paper
     $switch.Enabled = $false
 
     $addCard = Add-Control $form Panel '' 20 315 470 92
@@ -92,7 +93,7 @@ try {
     $name.AccessibleName = '账号别名'
     $save = Add-Button $addCard '保存当前账号' 311 42 143 36 $tint $accent
 
-    $notice = Add-Control $form Label '操作前请保存工作，并完全退出 Codex。' 22 419 466 22
+    $notice = Add-Control $form Label '切换前请保存工作；保存账号前请完全退出 Codex。' 22 419 466 22
     $notice.ForeColor = $muted
     $status = Add-Control $form Label '' 22 447 466 45
     $status.ForeColor = $muted
@@ -116,17 +117,13 @@ try {
         $switch.Enabled = $list.SelectedIndex -ge 0
     }
 
-    function Run-Action($action,$aliasName) {
+    function Save-CurrentAccount($aliasName) {
         try {
-            $null = & $engine -Action $action -Name $aliasName
+            $null = & $engine -Action Save -Name $aliasName
             Refresh-Profiles
-            if ($action -eq 'Save') {
-                $name.Clear()
-                $list.SelectedItem = $aliasName
-                Set-Status "已保存：$aliasName" $ok
-            } else {
-                Set-Status "已切换：$aliasName。请重新打开 Codex 核对。" $ok
-            }
+            $name.Clear()
+            $list.SelectedItem = $aliasName
+            Set-Status "已保存：$aliasName" $ok
         } catch {
             Set-Status '操作未完成。' $warning
             [void][Windows.Forms.MessageBox]::Show($form,$_.Exception.Message,'Codex Profile Dock')
@@ -146,10 +143,47 @@ try {
             [void]$name.Focus()
             return
         }
-        Run-Action Save $aliasName
+        Save-CurrentAccount $aliasName
+    })
+    $restartState = @{ Busy = $false }
+    $form.Add_FormClosing({ param($sender,$eventArgs)
+        if ($restartState.Busy) { $eventArgs.Cancel = $true }
     })
     $switch.Add_Click({
-        if ($list.SelectedIndex -ge 0) { Run-Action Switch ([string]$list.SelectedItem) }
+        if ($restartState.Busy -or $list.SelectedIndex -lt 0) { return }
+        $target = [string]$list.SelectedItem
+        $choice = [Windows.Forms.MessageBox]::Show(
+            $form, "切换到 $target？如果 Codex 正在运行，工具会尝试正常关闭并重开。请先保存工作并等待任务完成。",
+            '切换账号', 'YesNo', 'Question', 'Button2')
+        if ($choice -ne [Windows.Forms.DialogResult]::Yes) { return }
+        $restartState.Busy = $true
+        $list.Enabled = $false
+        $switch.Enabled = $false
+        $save.Enabled = $false
+        $name.Enabled = $false
+        try {
+            $result = Invoke-DockRestartSwitch -SwitchAccount {
+                $null = & $engine -Action Switch -Name $target
+            } -Progress {
+                param($message)
+                Set-Status $message
+                $form.Update()
+            } -Pump { [Windows.Forms.Application]::DoEvents() }
+            if ($result -eq 'Requested') {
+                Set-Status "已切换到 $target，已请求重开 Codex。请核对账号。" $ok
+            } else {
+                Set-Status "已切换到 $target，请手动打开 Codex。" $ok
+            }
+        } catch {
+            Set-Status '切换未完成。' $warning
+            [void][Windows.Forms.MessageBox]::Show($form,$_.Exception.Message,'Codex Profile Dock')
+        } finally {
+            $restartState.Busy = $false
+            $list.Enabled = $list.Items.Count -gt 0
+            $switch.Enabled = $list.SelectedIndex -ge 0
+            $save.Enabled = $true
+            $name.Enabled = $true
+        }
     })
 
     # Control bounds above are authored at 96 DPI (100% scaling).
