@@ -17,13 +17,55 @@ function Get-DockCodexProcesses {
     Get-Process -Name 'Codex','ChatGPT','codex-app-server','codex-tui' -ErrorAction SilentlyContinue
 }
 
-function Get-DockCodexWindows($desktop,$processes) {
+function Get-DockCodexDesktopProcesses($desktop,$processes) {
     $session = [Diagnostics.Process]::GetCurrentProcess().SessionId
     foreach ($process in $processes) {
-        if ($process.SessionId -eq $session -and $process.MainWindowHandle -ne 0 -and
+        if ($process.SessionId -eq $session -and
             $process.Path -and $process.Path.StartsWith($desktop.Root,[StringComparison]::OrdinalIgnoreCase)) {
             $process
         }
+    }
+}
+
+function Get-DockCodexWindows($desktop,$processes) {
+    Get-DockCodexDesktopProcesses $desktop $processes | Where-Object { $_.MainWindowHandle -ne 0 }
+}
+
+function Request-DockCodexQuit($window) {
+    if (!('ProfileDock.NativeQuit' -as [type])) {
+        Add-Type -Namespace ProfileDock -Name NativeQuit -ErrorAction Stop -MemberDefinition @"
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool IsIconic(System.IntPtr hwnd);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool ShowWindowAsync(System.IntPtr hwnd, int command);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool SetForegroundWindow(System.IntPtr hwnd);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern System.IntPtr GetForegroundWindow();
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern uint GetWindowThreadProcessId(System.IntPtr hwnd, out uint processId);
+"@
+    }
+    try {
+        $window.Refresh()
+        $handle = $window.MainWindowHandle
+        if ($handle -eq [IntPtr]::Zero) { return $false }
+        if ([ProfileDock.NativeQuit]::IsIconic($handle)) {
+            [void][ProfileDock.NativeQuit]::ShowWindowAsync($handle,9) # SW_RESTORE
+        }
+        [void][ProfileDock.NativeQuit]::SetForegroundWindow($handle)
+        # Use the app's Quit shortcut only after verifying the foreground window.
+        $foreground = [ProfileDock.NativeQuit]::GetForegroundWindow()
+        if ($foreground -ne $handle) { return $false }
+        [uint32]$owner = 0
+        [void][ProfileDock.NativeQuit]::GetWindowThreadProcessId($foreground,[ref]$owner)
+        if ($owner -ne $window.Id -or [ProfileDock.NativeQuit]::GetForegroundWindow() -ne $handle) {
+            return $false
+        }
+        [Windows.Forms.SendKeys]::SendWait('^q')
+        return $true
+    } catch [System.InvalidOperationException] {
+        return $false
     }
 }
 
@@ -36,20 +78,37 @@ function Invoke-DockRestartSwitch {
         [Parameter(Mandatory)][scriptblock]$SwitchAccount,
         [Parameter(Mandatory)][scriptblock]$Progress,
         [Parameter(Mandatory)][scriptblock]$Pump,
-        [ValidateRange(0,60)][int]$TimeoutSeconds = 15
+        [ValidateRange(0,60)][int]$TimeoutSeconds = 15, [ValidateRange(0,30)][int]$FocusSeconds = 8
     )
     $running = @(Get-DockCodexProcesses)
     $desktop = Get-DockCodexDesktop
     if ($running.Count) {
         if (!$desktop) { throw '无法识别 Codex 的重启入口。请手动退出 Codex 后再切换。' }
-        $windows = @(Get-DockCodexWindows $desktop $running)
-        if (!$windows.Count) { throw '没有找到可正常关闭的 Codex 窗口。请从托盘退出 Codex，并关闭 Codex CLI 后重试。' }
-        & $Progress '正在请求 Codex 正常退出…'
-        $requested = $false
-        foreach ($window in $windows) {
-            if ($window.CloseMainWindow()) { $requested = $true }
+        if (!@(Get-DockCodexDesktopProcesses $desktop $running).Count) {
+            throw '未找到可安全退出的 Codex 桌面进程。请先退出其他 Codex 或 CLI 进程。'
         }
-        if (!$requested) { throw '无法请求 Codex 正常退出，账号未切换。请手动退出后重试。' }
+        $windows = @(Get-DockCodexWindows $desktop $running)
+        if (!$windows.Count) {
+            & $Progress '正在恢复托盘中的 Codex 窗口…'
+            Open-DockCodexDesktop $desktop
+        }
+        & $Progress '正在通过 Ctrl+Q 请求 Codex 退出…'
+        $focusWait = [Diagnostics.Stopwatch]::StartNew()
+        $requested = $false
+        do {
+            $current = @(Get-DockCodexProcesses)
+            if (!$current.Count) { break }
+            foreach ($window in @(Get-DockCodexWindows $desktop $current)) {
+                if (Request-DockCodexQuit $window) { $requested = $true; break }
+            }
+            if (!$requested -and $focusWait.Elapsed.TotalSeconds -lt $FocusSeconds) {
+                & $Pump
+                Start-Sleep -Milliseconds 150
+            }
+        } while (!$requested -and $focusWait.Elapsed.TotalSeconds -lt $FocusSeconds)
+        if (!$requested -and @(Get-DockCodexProcesses).Count) {
+            throw '无法把 Codex 置于前台并请求退出，账号未切换。请手动完全退出后重试。'
+        }
         $wait = [Diagnostics.Stopwatch]::StartNew()
         while (@(Get-DockCodexProcesses).Count) {
             if ($wait.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
