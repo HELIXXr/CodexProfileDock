@@ -1,0 +1,1 @@
+{"name":"helix-codex-profile-dock-local","interface":{"displayName":"Codex Profile Dock (Local)"},"plugins":[{"name":"helix-codex-profile-dock","source":{"source":"local","path":"./plugin"}}]}

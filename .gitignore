@@ -1,0 +1,10 @@
+# Keep login caches and encrypted backups out of Git.
+auth.json
+auth.json.*
+*.dpapi
+.lock
+encrypted-profiles/
+*private-backup*/
+.env
+.env.*
+*.zip

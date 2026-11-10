@@ -1,0 +1,10 @@
+{
+  "name": "helix-codex-profile-dock",
+  "version": "0.1.1",
+  "description": "Open the standalone Windows Codex profile switcher.",
+  "skills": "./skills/",
+  "requires_local_executor": true,
+  "interface": {
+    "displayName": "Codex Profile Dock"
+  }
+}
