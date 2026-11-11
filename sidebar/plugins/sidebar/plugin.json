@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "helix-codex-profile-dock-sidebar",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Local account panel with explicit confirmation and a separate Windows restart worker.",
   "extensions": {
     "com.openai": {

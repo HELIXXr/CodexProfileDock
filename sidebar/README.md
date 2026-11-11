@@ -1,4 +1,4 @@
-# Profile Dock 原生侧栏版（0.8.0 Beta）
+# Profile Dock 原生侧栏版（0.8.1 Beta）
 
 从 Codex 原生侧栏选择、保存和切换本机账号。支持 Windows、Node.js 和 Microsoft Store 版 Codex 桌面应用。
 
