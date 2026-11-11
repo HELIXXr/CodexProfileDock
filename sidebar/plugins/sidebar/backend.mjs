@@ -1,9 +1,15 @@
+import {spawn} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 import {randomUUID} from "node:crypto";
 export const validName = n => typeof n==="string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(n);
 
-export function createBackend({local=process.env.LOCALAPPDATA, launch, startupTimeoutMs=6000}={}) {
+function workerAlive(pid){
+  try{process.kill(pid,0);return true;}catch(error){return error.code!=="ESRCH";}
+}
+
+export function createBackend({local=process.env.LOCALAPPDATA, codexHome=process.env.CODEX_HOME, launch, startupTimeoutMs=6000, isWorkerAlive=workerAlive}={}) {
   if(!local) throw Error("Windows local data directory is unavailable");
   local=path.resolve(local);
   const state=path.join(local,"CodexProfileDockSidebar");
@@ -14,20 +20,50 @@ export function createBackend({local=process.env.LOCALAPPDATA, launch, startupTi
     try { return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
     catch(e){if(e.code==="ENOENT")return [];throw Error("无法读取账号别名。");}
   }
-  const heartbeat=path.join(state,"companion.heartbeat");
-  function companionOnline(){
-    try{return Date.now()-fs.statSync(heartbeat).mtimeMs<8000;}catch{return false;}
+  const home=path.resolve(codexHome || path.join(process.env.USERPROFILE ?? local, ".codex"));
+  const run=launch??(args=>new Promise((resolve,reject)=>{
+    const exe=path.join(process.env.SystemRoot??"C:\\\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
+    const broker=fileURLToPath(new URL("./scripts/Launch-SidebarWorker.ps1",import.meta.url));
+    const child=spawn(exe,["-NoProfile","-STA","-NonInteractive","-WindowStyle","Hidden","-File",broker,...args,
+      "-StateDir",state,"-Vault",vault,"-CodexHome",home],{stdio:["ignore","pipe","ignore"],windowsHide:true});
+    let response="";
+    child.stdout.setEncoding("utf8").on("data",chunk=>{response=(response+chunk).slice(-160);});
+    const timer=setTimeout(()=>{child.kill();reject(Error("explorer_timeout"));},6000);
+    child.once("error",()=>{clearTimeout(timer);reject(Error("explorer_spawn"));});
+    child.once("close",code=>{
+      clearTimeout(timer);
+      if(code===0 && response.trim()==="explorer_accepted")resolve();
+      else reject(Error("explorer_unavailable"));
+    });
+  }));
+  function inspectOperation(){
+    const latest=path.join(state,"latest.json");
+    let operation=null;
+    try{operation=JSON.parse(fs.readFileSync(latest,"utf8").replace(/^\uFEFF/,""));}catch{}
+    if(operation?.status==="running" && /^[a-f0-9-]{36}$/.test(operation.id) &&
+       Number.isInteger(operation.pid) && operation.pid>0 &&
+       Date.now()-Date.parse(operation.updated)>10000 && !isWorkerAlive(operation.pid)){
+      const recovery=path.join(state,operation.id+".recover");
+      let ownsRecovery=false;
+      try{
+        fs.closeSync(fs.openSync(recovery,"wx"));ownsRecovery=true;
+        if(fs.readFileSync(lock,"utf8")===operation.id){
+          operation={...operation,status:"interrupted",reason:"worker_exited",updated:new Date().toISOString()};
+          fs.writeFileSync(latest,JSON.stringify(operation));
+          for(const suffix of [".ready",".go",".tmp"])fs.rmSync(path.join(state,operation.id+suffix),{force:true});
+          fs.rmSync(lock);
+        }
+      }catch{}finally{
+        if(ownsRecovery){try{fs.rmSync(recovery,{force:true});}catch{}}
+      }
+    }
+    return operation;
   }
-  const run=launch??(async args=>{
-    if(!companionOnline())throw Error("companion_offline");
-    const id=args[5];
-    const tmp=path.join(state,id+".request.tmp");
-    fs.writeFileSync(tmp,JSON.stringify({id,action:args[1],name:args[3],created:Date.now()}),{flag:"wx"});
-    fs.renameSync(tmp,path.join(state,id+".request.json"));
-  });
   return {
-    list(){let operation=null;try{operation=JSON.parse(fs.readFileSync(path.join(state,"latest.json"),"utf8").replace(/^\uFEFF/,""));}catch{}
-      return {profiles:profiles(),busy:fs.existsSync(lock),companionOnline:companionOnline(),operation};},
+    list(){
+      const operation=inspectOperation();
+      return {profiles:profiles(),busy:fs.existsSync(lock),operation};
+    },
     prepare({action,name}={}){
       if(!["Save","Switch"].includes(action)||!validName(name))throw Error("请输入 1–32 位英文、数字、短横线或下划线别名，并以字母或数字开头。");
       if(action==="Switch"&&!profiles().includes(name))throw Error("所选账号不存在，请刷新列表。");
@@ -44,6 +80,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, launch, startupTi
       if(!intent||intent.expires<Date.now())throw Error("确认已过期，请重新选择账号。");
       if(intent.action==="Switch"&&!profiles().includes(intent.name))throw Error("所选账号已不存在。");
       fs.mkdirSync(state,{recursive:true});
+      inspectOperation();
       let handle;
       try{handle=fs.openSync(lock,"wx");}catch(e){if(e.code==="EEXIST")throw Error("有操作正在进行；如上次异常终止，请先确认没有后台切换进程，再移除 operation.lock。");throw e;}
       const id=randomUUID();
@@ -60,7 +97,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, launch, startupTi
         // The worker may not touch Codex until this single-use permit exists.
         fs.writeFileSync(path.join(state,id+".go"),"go",{flag:"wx"});
       }catch(error){
-        let reason=/^(?:companion_offline|worker_no_ready)$/i.test(error.message)?error.message:"startup";
+        let reason=/^(?:explorer_(?:timeout|spawn|unavailable)|worker_no_ready)$/i.test(error.message)?error.message:"startup";
         try{
           const result=JSON.parse(fs.readFileSync(path.join(state,"latest.json"),"utf8"));
           if(result.id===id && /^worker_(?:forms|script|permit)$/.test(result.reason))reason=result.reason;
@@ -72,11 +109,11 @@ export function createBackend({local=process.env.LOCALAPPDATA, launch, startupTi
           fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"failed",kind:intent.action,reason,updated:new Date().toISOString()}));
           fs.rmSync(lock,{force:true});
         }
-        for(const suffix of [".ready",".request.json",".request.tmp"]){
+        for(const suffix of [".ready"]){
           fs.rmSync(path.join(state,id+suffix),{force:true});
         }
 
-        throw Error(reason==="companion_offline" ? "后台助手未运行，请先双击 Start-Profile-Dock-Companion.cmd。账号未改变。" : "后台未确认启动，已取消本次操作。账号未改变。诊断代码："+reason);
+        throw Error("后台未确认启动，已取消本次操作。账号未改变。诊断代码："+reason);
       }
       return {id,status:"queued"};
     }

@@ -15,7 +15,7 @@ function Test-OwnLock {
 }
 function Write-State($status,$reason) {
  if(!(Test-OwnLock)){return}
- $data=@{id=$OperationId;status=$status;kind=$Action;reason=$reason;updated=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress
+ $data=@{id=$OperationId;status=$status;kind=$Action;reason=$reason;pid=$PID;stage=$checkpoint;updated=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress
  $temp=Join-Path $StateDir ($OperationId+'.tmp')
  [IO.File]::WriteAllText($temp,$data,[Text.UTF8Encoding]::new($false))
  $target=Join-Path $StateDir 'latest.json'
@@ -27,6 +27,7 @@ if(!(Test-OwnLock)){
  return
 }
 $phase='worker_forms'
+$checkpoint='startup'
 try {
  Add-Type -AssemblyName System.Windows.Forms
  $phase='worker_script'
@@ -45,10 +46,16 @@ try {
  if(!(Test-OwnLock)){return}
  if($Action -eq 'Probe'){Write-State 'probe_ok';return}
  $phase='operation'
+ $checkpoint='wait_for_exit'
  Write-State 'running'
  $result=Invoke-DockRestartSwitch -SwitchAccount {
+   $checkpoint='account_write'
+   Write-State 'running'
    $null=& (Join-Path $PSScriptRoot 'Switch-Codex.ps1') -Action $Action -Name $Name -Vault $Vault -CodexHome $CodexHome
+   $checkpoint='account_written'
+   Write-State 'running'
  } -Progress {param($message)} -Pump {}
+ $checkpoint='finished'
  if($result -eq 'Manual'){Write-State 'manual'}else{Write-State 'requested'}
 }catch{
  if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace ('worker_error '+$phase+' '+$_.Exception.GetType().Name) }
