@@ -21,23 +21,23 @@ function Write-State($status,$reason) {
  $target=Join-Path $StateDir 'latest.json'
  if([IO.File]::Exists($target)){[IO.File]::Replace($temp,$target,[NullString]::Value)}else{[IO.File]::Move($temp,$target)}
 }
-if(!(Test-OwnLock)){exit 1}
+if(!(Test-OwnLock)){return}
 $phase='worker_forms'
 try {
  Add-Type -AssemblyName System.Windows.Forms
  $phase='worker_script'
  . (Join-Path $PSScriptRoot 'Desktop-Restart.ps1')
  if(!(Get-Command Invoke-DockRestartSwitch -ErrorAction SilentlyContinue)){throw 'Worker initialization failed'}
- if(!(Test-OwnLock)){exit 1}
+ if(!(Test-OwnLock)){return}
  [IO.File]::WriteAllText($ready,'ready')
  $phase='worker_permit'
  $timer=[Diagnostics.Stopwatch]::StartNew()
  while(!(Test-Path -LiteralPath $go)){
-   if(!(Test-OwnLock)){exit 1}
+   if(!(Test-OwnLock)){return}
    if($timer.Elapsed.TotalSeconds -ge 15){throw 'No startup authorization'}
    Start-Sleep -Milliseconds 100
  }
- if(!(Test-OwnLock)){exit 1}
+ if(!(Test-OwnLock)){return}
  if($Action -eq 'Probe'){Write-State 'probe_ok';return}
  $phase='operation'
  Write-State 'running'

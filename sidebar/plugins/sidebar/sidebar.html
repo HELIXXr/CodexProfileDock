@@ -17,10 +17,11 @@ button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-vis
 <p class="note">保存也会退出并重开 Codex，以便保存最新登录状态。</p></section>
 <section id="confirm" hidden aria-labelledby="confirmTitle"><h2 id="confirmTitle">确认操作</h2><p id="question"></p>
 <p>请先保存工作，等待其他任务完成。Codex 将退出，当前面板也会关闭。</p><div class="actions"><button id="yes" class="primary">确认并继续</button><button id="no">取消</button></div></section>
+<p id="helper" class="note" role="status">正在检查本机后台助手…</p>
 <p id="status" role="status" aria-live="polite">正在连接…</p>
 <p class="note">登录令牌保存在本机加密文件中，不会发送给聊天模型。操作后请核对 Codex 当前账号。</p>
 </main><script>
-const $=s=>document.getElementById(s),pending=new Map();let seq=0,connected=false,busy=false,proposal=null,poll=null,refreshing=false;
+const $=s=>document.getElementById(s),pending=new Map();let seq=0,connected=false,online=false,busy=false,proposal=null,poll=null,refreshing=false;
 function request(method,params={}){
  return new Promise((resolve,reject)=>{
   const id="dock-"+(++seq),timeout=setTimeout(()=>{pending.delete(id);reject(Error("服务响应超时，请刷新面板。"));},15000);
@@ -34,9 +35,9 @@ window.addEventListener("message",event=>{
 });
 function status(text){$("status").textContent=text;}
 function controls(){
- $("probe").disabled=!connected||busy||!!proposal;
- $("refresh").disabled=!connected||busy||!!proposal;$("save").disabled=!connected||busy||!!proposal;
- $("alias").disabled=busy||!!proposal;document.querySelectorAll("[data-switch]").forEach(b=>b.disabled=busy||!!proposal);
+ $("probe").disabled=!connected||!online||busy||!!proposal;
+ $("refresh").disabled=!connected||busy||!!proposal;$("save").disabled=!connected||!online||busy||!!proposal;
+ $("alias").disabled=busy||!!proposal;document.querySelectorAll("[data-switch]").forEach(b=>b.disabled=!online||busy||!!proposal);
 }
 async function tool(name,args={}){
  const r=await request("tools/call",{name,arguments:args});
@@ -46,7 +47,9 @@ async function tool(name,args={}){
 async function refresh(){
  if(refreshing||proposal)return;refreshing=true;
  try{
-  const data=await tool("list_profiles");busy=!!data.busy;$("profiles").replaceChildren();
+  const data=await tool("list_profiles");busy=!!data.busy;online=!!data.companionOnline;
+  $("helper").textContent=online?"后台助手已连接。":"后台助手未运行。请双击 Start-Profile-Dock-Companion.cmd；连接后按钮会自动启用。";
+  $("profiles").replaceChildren();
   for(const name of data.profiles??[]){
    const row=document.createElement("div");row.className="row";const label=document.createElement("strong");label.textContent=name;
    const button=document.createElement("button");button.textContent="切换并重开";button.dataset.switch="";button.onclick=()=>prepare("Switch",name);row.append(label,button);$("profiles").append(row);
@@ -88,7 +91,7 @@ $("yes").onclick=async()=>{
 };
 (async()=>{
  try{
-  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.2.2"},appCapabilities:{}});
+  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.3.0"},appCapabilities:{}});
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(refresh,3500);
  }catch(e){status(e.message);}

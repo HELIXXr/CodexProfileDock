@@ -6,9 +6,9 @@ import {createBackend} from "./backend.mjs";
 const local=fs.mkdtempSync(path.join(os.tmpdir(),"dock-probe-"));
 const state=path.join(local,"CodexProfileDockSidebar");
 try{
- const denied=createBackend({local,launch:async()=>{throw Error("wmi_result_2");}});
- await assert.rejects(denied.probe(),/wmi_result_2/);
- assert.equal(denied.list().operation.reason,"wmi_result_2");
+ const denied=createBackend({local,launch:async()=>{throw Error("worker_no_ready");}});
+ await assert.rejects(denied.probe(),/worker_no_ready/);
+ assert.equal(denied.list().operation.reason,"worker_no_ready");
  assert.equal(denied.list().busy,false);
  let action;
  const good=createBackend({local,startupTimeoutMs:300,launch:async args=>{

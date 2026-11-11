@@ -1,22 +1,18 @@
-# Profile Dock 原生侧栏版（0.2.2 诊断版）
+# Profile Dock 原生侧栏版（0.3.0 Beta）
 
-面板在 Codex 内打开。它读取本机加密账号文件的**别名**，不解密或展示令牌。需要 Node.js 和支持侧栏扩展的 Windows Codex 桌面应用。
+在 Codex 原生侧栏内选择、保存和切换本机账号。需要 Windows、Node.js 和支持侧栏扩展的 Codex 桌面应用。
 
-## 安装与升级
-在本目录运行 `codex plugin marketplace add .`，再运行 `codex plugin add helix-codex-profile-dock-sidebar@helix-profile-dock-preview`。安装后完全退出并重开 Codex。原来的独立窗口版可以并存。
+## 安装
+在本目录运行 `codex plugin marketplace add .`，再运行 `codex plugin add helix-codex-profile-dock-sidebar@helix-profile-dock-preview`。安装后完全退出并重开 Codex。旧的独立窗口版可以并存。
 
-## 使用
-选择账号的「切换并重开」，在面板内再次确认。保存当前账号时填写英文字母/数字别名；**保存也会退出并重开 Codex**。操作前请保存工作并等待任务完成。
+## 启动后台助手
+双击本目录的 `Start-Profile-Dock-Companion.cmd`。助手在当前 Windows 用户会话中安静运行，不自动加入开机启动，不使用 WMI，不会因为 Codex 退出而结束。看到面板显示「后台助手已连接」后可点击「测试后台」；自检不会读取登录令牌、改动账号或退出 Codex。需要结束助手时双击 `Stop-Profile-Dock-Companion.cmd`；它会在当前操作结束后停止。
 
-后台使用 Windows WMI 启动独立 PowerShell 进程，避免 Codex 退出时结束本次操作。后台未按时确认启动时会取消操作并解除锁，避免一直停在排队状态。只在识别到 Microsoft Store Codex 后请求应用通过 Ctrl+Q 退出，不强杀。其他 CLI 未关闭、窗口无法置前或退出超时均会停止。重开后核对 Codex 中实际显示的账号。
+## 切换与保存
+先保存工作并等待任务结束，再在面板选择账号并确认。保存账号也需要退出并重开 Codex。后台通过 Ctrl+Q 请求已识别的 Microsoft Store 版 Codex 正常退出，等进程完全退出后才更新账号。未能退出时会停止，不强制杀进程。重开后请核对实际账号。
 
-## 数据
-账号备份沿用 %LOCALAPPDATA%\\CodexProfileDock 或旧的 LocalCodexSwitch。状态文件在 %LOCALAPPDATA%\\CodexProfileDockSidebar，不含令牌。账号别名经 UI 专用工具返回，不作为模型工具结果内容公开。此版本不标记哪个账号「当前激活」，以 Codex 实际显示为准。
-如果后台进程异常退出而锁文件残留，先确认没有 Sidebar-Worker.ps1 进程运行，再删除状态目录内的 operation.lock。不要在流程运行时删除。
+账号记录仍沿用 %LOCALAPPDATA%\CodexProfileDock（或旧版 LocalCodexSwitch）。状态和操作请求保存在 %LOCALAPPDATA%\CodexProfileDockSidebar，文件包含状态、操作与本地别名，不含令牌。不要分享账号备份或 auth.json。
 
 ## 测试
-运行 `node plugins/sidebar/test-backend.mjs`。它只使用临时模拟文件，不触碰真实账号。
+运行 `node plugins/sidebar/test-companion.mjs`，通过临时目录测试真实助手和自检，不触碰账号。
 
-
-## 启动诊断
-点击「测试后台」会走和保存、切换相同的 Windows 后台启动流程，但不会退出 Codex、读取登录令牌或修改账号。失败时请记下诊断代码。
