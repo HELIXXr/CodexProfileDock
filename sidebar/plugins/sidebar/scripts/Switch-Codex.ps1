@@ -1,7 +1,7 @@
 # Windows PowerShell 5.1
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Save','Switch','List')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Save','Switch','List','ReadUsageAuth')][string]$Action,
     [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
     [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }),
     [string]$Vault = $(if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch') -PathType Container) {
@@ -69,6 +69,37 @@ if ($Action -eq 'List') {
     return
 }
 if (!$Name) { throw 'Supply -Name, for example Personal or Work.' }
+if ($Action -eq 'ReadUsageAuth') {
+    $saved = Read-Profile (Join-Path $Vault ($Name + '.dpapi'))
+    $identity = Get-Identity $saved
+    $bytes = $saved
+    try {
+        $active = Read-Blob $auth
+        if ((Get-Identity $active) -ceq $identity) { $bytes = $active }
+    } catch {
+        # Use the saved snapshot if the active login is absent or different.
+    }
+    $data = [Text.Encoding]::UTF8.GetString($bytes).TrimStart([char]0xFEFF) | ConvertFrom-Json
+    $accountId = [string]$data.tokens.account_id
+    if (!$accountId) { throw 'The login is missing its workspace ID.' }
+
+    $codexExecutable = $null
+    foreach ($package in @(Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue)) {
+        if (!$package.InstallLocation) { continue }
+        $candidate = Join-Path $package.InstallLocation 'app\resources\codex.exe'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $codexExecutable = $candidate
+            break
+        }
+    }
+    if (!$codexExecutable) {
+        $codexExecutable = (Get-Command codex.exe -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1).Source
+    }
+    @{accessToken=[string]$data.tokens.access_token; chatgptAccountId=$accountId;
+      codexExecutable=$codexExecutable} | ConvertTo-Json -Compress
+    return
+}
 Assert-Closed
 if (!(Test-Path -LiteralPath $auth -PathType Leaf)) {
     throw 'No auth.json in the selected Codex home. Sign in normally and check the credential storage mode.'

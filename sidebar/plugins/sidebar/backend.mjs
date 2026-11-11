@@ -3,6 +3,7 @@ import {fileURLToPath} from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 import {randomUUID} from "node:crypto";
+import {readProfileUsage} from "./usage.mjs";
 export const validName = n => typeof n==="string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(n);
 
 function workerAlive(pid){
@@ -17,6 +18,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   const state=path.resolve(userProfile,".codex-profile-dock-sidebar");
   const vault=fs.existsSync(path.join(local,"LocalCodexSwitch"))?path.join(local,"LocalCodexSwitch"):path.join(local,"CodexProfileDock");
   const pending=new Map();
+  const usage=new Map();
   const lock=path.join(state,"operation.lock");
   function profiles(){
     try { return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
@@ -64,7 +66,22 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   return {
     list(){
       const operation=inspectOperation();
-      return {profiles:profiles(),busy:fs.existsSync(lock),operation};
+      const names=profiles();
+      return {profiles:names,busy:fs.existsSync(lock),operation,
+        usage:Object.fromEntries(names.filter(name=>usage.has(name)).map(name=>[name,usage.get(name)]))};
+    },
+    async refreshUsage({name}={}){
+      if(!validName(name)||!profiles().includes(name))throw Error("usage_profile_missing");
+      if(fs.existsSync(lock))throw Error("usage_busy");
+      try{
+        const windows=await readProfileUsage({name,vault,codexHome:home,state});
+        const snapshot={windows,checkedAt:new Date().toISOString()};
+        usage.set(name,snapshot);
+        return snapshot;
+      }catch(error){
+        throw Error(/^usage_(auth_unavailable|cli_unavailable|expired|no_windows|timeout|unavailable)$/.test(error.message)
+          ? error.message : "usage_unavailable");
+      }
     },
     prepare({action,name}={}){
       if(!["Save","Switch"].includes(action)||!validName(name))throw Error("请输入 1–32 位英文、数字、短横线或下划线别名，并以字母或数字开头。");

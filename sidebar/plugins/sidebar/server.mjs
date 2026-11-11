@@ -10,19 +10,21 @@ const tools=[
  ...[
  ["list_profiles",schema,true],
  ["probe_worker",schema,false],
+ ["refresh_usage",{type:"object",properties:{name:{type:"string"}},required:["name"],additionalProperties:false},true,true],
  ["prepare_operation",{type:"object",properties:{action:{enum:["Save","Switch"]},name:{type:"string"}},required:["action","name"],additionalProperties:false},true],
  ["start_operation",{type:"object",properties:{ticket:{type:"string"}},required:["ticket"],additionalProperties:false},false]
- ].map(([name,inputSchema,readOnlyHint])=>({name,inputSchema,description:"Profile Dock panel action.",annotations:{readOnlyHint,destructiveHint:!readOnlyHint,openWorldHint:false},_meta:{ui:{visibility:["app"]}}}))
+ ].map(([name,inputSchema,readOnlyHint,openWorldHint=false])=>({name,inputSchema,description:"Profile Dock panel action.",annotations:{readOnlyHint,destructiveHint:!readOnlyHint,openWorldHint},_meta:{ui:{visibility:["app"]}}}))
 ];
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.4.2"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.5.0"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{
   if(p.name==="open_sidebar_preview")return result({});
   if(p.name==="list_profiles")return result(backend.list());
+  if(p.name==="refresh_usage")return result(await backend.refreshUsage(p.arguments));
   if(p.name==="probe_worker")return result(await backend.probe());
   if(p.name==="prepare_operation")return result(backend.prepare(p.arguments));
   if(p.name==="start_operation")return result(await backend.start(p.arguments));
