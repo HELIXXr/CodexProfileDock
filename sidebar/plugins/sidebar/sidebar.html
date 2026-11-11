@@ -12,7 +12,7 @@ button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-vis
 #confirm{border:2px solid var(--accent)}#confirm p{overflow-wrap:anywhere}.actions{display:flex;gap:10px;margin-top:16px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
 </style><main>
 <header><p>PROFILE DOCK / LOCAL</p><h1>Codex 账号切换</h1></header>
-<section><div class="top"><h2>已保存账号</h2><button id="refresh" disabled>刷新</button></div><div id="profiles">正在连接本机服务…</div></section>
+<section><div class="top"><h2>已保存账号</h2><div class="actions" style="margin-top:0"><button id="probe" disabled>测试后台</button><button id="refresh" disabled>刷新</button></div></div><div id="profiles">正在连接本机服务…</div></section>
 <section><h2>保存当前账号</h2><label for="alias">本地别名（例如 Personal）</label><div class="form"><input id="alias" maxlength="32" autocomplete="off"><button id="save" disabled>保存账号</button></div>
 <p class="note">保存也会退出并重开 Codex，以便保存最新登录状态。</p></section>
 <section id="confirm" hidden aria-labelledby="confirmTitle"><h2 id="confirmTitle">确认操作</h2><p id="question"></p>
@@ -34,6 +34,7 @@ window.addEventListener("message",event=>{
 });
 function status(text){$("status").textContent=text;}
 function controls(){
+ $("probe").disabled=!connected||busy||!!proposal;
  $("refresh").disabled=!connected||busy||!!proposal;$("save").disabled=!connected||busy||!!proposal;
  $("alias").disabled=busy||!!proposal;document.querySelectorAll("[data-switch]").forEach(b=>b.disabled=busy||!!proposal);
 }
@@ -52,7 +53,10 @@ async function refresh(){
   }
   if(!data.profiles?.length)$("profiles").textContent="还没有保存的账号。";
   const statuses={queued:"正在确认本机后台启动…",running:"正在退出并处理账号，Codex 会暂时关闭。",requested:"上次账号操作已完成，并已请求重开 Codex。请核对当前账号。",manual:"账号操作已完成，请手动打开 Codex 并核对账号。",failed:"上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。"};
-  status(data.operation?.reason==="startup" && data.operation?.status==="failed" ? "后台未确认启动，已取消本次操作。账号未改变，可以重试。" : data.operation ? statuses[data.operation.status]??"请核对账号。" : "请选择账号，或保存当前登录。");
+  const op=data.operation;
+  if(op?.status==="probe_ok")status("后台自检通过。没有退出 Codex，也没有改动账号。");
+  else if(op?.status==="failed" && op.reason!=="operation")status("后台启动未完成，账号未改变。诊断代码："+(op.reason||"startup"));
+  else status(op ? statuses[op.status]??"请核对账号。" : "请选择账号，或保存当前登录。");
   controls();
  }catch(e){status(e.message);}finally{refreshing=false;}
 }
@@ -66,6 +70,12 @@ async function prepare(action,name){
 }
 $("save").onclick=()=>prepare("Save",$("alias").value);
 $("refresh").onclick=refresh;
+$("probe").onclick=async()=>{
+ if(busy||proposal)return;
+ busy=true;controls();status("正在测试后台启动，不会退出 Codex 或改动账号…");
+ try {await tool("probe_worker");await refresh();}
+ catch(e){busy=false;controls();status(e.message);}
+};
 $("no").onclick=()=>{proposal=null;$("confirm").hidden=true;controls();};
 $("yes").onclick=async()=>{
  if(!proposal)return;
@@ -78,7 +88,7 @@ $("yes").onclick=async()=>{
 };
 (async()=>{
  try{
-  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.2.1"},appCapabilities:{}});
+  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.2.2"},appCapabilities:{}});
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(refresh,3500);
  }catch(e){status(e.message);}

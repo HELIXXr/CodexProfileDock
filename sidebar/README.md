@@ -1,4 +1,4 @@
-# Profile Dock 原生侧栏版（0.2.1 Beta）
+# Profile Dock 原生侧栏版（0.2.2 诊断版）
 
 面板在 Codex 内打开。它读取本机加密账号文件的**别名**，不解密或展示令牌。需要 Node.js 和支持侧栏扩展的 Windows Codex 桌面应用。
 
@@ -17,3 +17,6 @@
 ## 测试
 运行 `node plugins/sidebar/test-backend.mjs`。它只使用临时模拟文件，不触碰真实账号。
 
+
+## 启动诊断
+点击「测试后台」会走和保存、切换相同的 Windows 后台启动流程，但不会退出 Codex、读取登录令牌或修改账号。失败时请记下诊断代码。

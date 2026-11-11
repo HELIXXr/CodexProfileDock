@@ -9,6 +9,7 @@ const tools=[
  {name:"open_sidebar_preview",title:"Profile Dock",description:"Open the local account panel.",inputSchema:schema,annotations:{readOnlyHint:true,openWorldHint:false},_meta:{ui:{resourceUri:uri},"openai/ui":{entrypoints:[{type:"global"}]}}},
  ...[
  ["list_profiles",schema,true],
+ ["probe_worker",schema,false],
  ["prepare_operation",{type:"object",properties:{action:{enum:["Save","Switch"]},name:{type:"string"}},required:["action","name"],additionalProperties:false},true],
  ["start_operation",{type:"object",properties:{ticket:{type:"string"}},required:["ticket"],additionalProperties:false},false]
  ].map(([name,inputSchema,readOnlyHint])=>({name,inputSchema,description:"Profile Dock panel action.",annotations:{readOnlyHint,destructiveHint:!readOnlyHint,openWorldHint:false},_meta:{ui:{visibility:["app"]}}}))
@@ -16,12 +17,13 @@ const tools=[
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.2.1"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.2.2"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{
   if(p.name==="open_sidebar_preview")return result({});
   if(p.name==="list_profiles")return result(backend.list());
+  if(p.name==="probe_worker")return result(await backend.probe());
   if(p.name==="prepare_operation")return result(backend.prepare(p.arguments));
   if(p.name==="start_operation")return result(await backend.start(p.arguments));
  }catch(e){return {isError:true,content:[{type:"text",text:e.message}]};}

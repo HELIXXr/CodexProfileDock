@@ -24,11 +24,19 @@ export function createBackend({local=process.env.LOCALAPPDATA, codexHome=process
     const invocation="& "+psQuote(worker)+" -Action "+psQuote(args[1])+" -Name "+psQuote(args[3])+" -OperationId "+psQuote(args[5])+" -StateDir "+psQuote(state)+" -Vault "+psQuote(vault)+" -CodexHome "+psQuote(home);
     const commandLine='"'+exe+'" -NoProfile -STA -WindowStyle Hidden -EncodedCommand '+Buffer.from(invocation,"utf16le").toString("base64");
     // WMI brokers a new process outside the MCP server's process tree.
-    const code="$ErrorActionPreference='Stop'; $r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="+psQuote(commandLine)+"}; if($r.ReturnValue -ne 0){exit 1}";
-    const child=spawn(exe,["-NoProfile","-WindowStyle","Hidden","-Command",code],{stdio:"ignore",windowsHide:true});
-    const timer=setTimeout(()=>{child.kill();reject(Error("launch timeout"));},6000);
-    child.once("error",e=>{clearTimeout(timer);reject(e);});
-    child.once("exit",exitCode=>{clearTimeout(timer);exitCode===0?resolve():reject(Error("launch failed"));});
+    const code="$ErrorActionPreference='Stop'; try { $r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="+psQuote(commandLine)+"}; if($r.ReturnValue -eq 0){'started_'+$r.ProcessId}else{'wmi_result_'+$r.ReturnValue} } catch {if($_.Exception.NativeErrorCode){'wmi_native_'+[int]$_.Exception.NativeErrorCode}else{'wmi_hresult_'+ $_.Exception.HResult}}";
+    const child=spawn(exe,["-NoProfile","-WindowStyle","Hidden","-Command",code],{stdio:["ignore","pipe","ignore"],windowsHide:true});
+    let response="";
+    child.stdout.setEncoding("utf8").on("data",chunk=>{response=(response+chunk).slice(-160);});
+    const timer=setTimeout(()=>{child.kill();reject(Error("broker_timeout"));},6000);
+    child.once("error",e=>{clearTimeout(timer);reject(Error("broker_spawn_"+(e.code??"unknown")));});
+    child.once("close",code=>{
+      clearTimeout(timer);
+      const marker=response.trim();
+      if(code===0 && /^started_[0-9]+$/.test(marker))resolve();
+      else if(/^wmi_(?:result|hresult|native)_-?[0-9]+$/.test(marker))reject(Error(marker));
+      else reject(Error("broker_exit_"+(code??"unknown")));
+    });
   }));
   return {
     list(){let operation=null;try{operation=JSON.parse(fs.readFileSync(path.join(state,"latest.json"),"utf8").replace(/^\uFEFF/,""));}catch{}
@@ -40,6 +48,10 @@ export function createBackend({local=process.env.LOCALAPPDATA, codexHome=process
       const ticket=randomUUID();pending.set(ticket,{action,name,expires:Date.now()+120000});
       return {ticket,action,name};
     },
+    probe(){
+      const ticket=randomUUID();pending.set(ticket,{action:"Probe",name:"Probe",expires:Date.now()+120000});
+      return this.start({ticket});
+    },
     async start({ticket}={}){
       const intent=pending.get(ticket);pending.delete(ticket);
       if(!intent||intent.expires<Date.now())throw Error("确认已过期，请重新选择账号。");
@@ -50,31 +62,37 @@ export function createBackend({local=process.env.LOCALAPPDATA, codexHome=process
       const id=randomUUID();
       try{
         fs.writeFileSync(handle,id);fs.closeSync(handle);handle=undefined;
-        fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"queued",updated:new Date().toISOString()}));
+        fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"queued",kind:intent.action,updated:new Date().toISOString()}));
         await run(["-Action",intent.action,"-Name",intent.name,"-OperationId",id]);
         const ready=path.join(state,id+".ready");
         const deadline=Date.now()+startupTimeoutMs;
         while(!fs.existsSync(ready) && fs.existsSync(lock) && Date.now()<deadline){
           await new Promise(resolve=>setTimeout(resolve,100));
         }
-        if(!fs.existsSync(ready) || fs.readFileSync(lock,"utf8")!==id)throw Error("worker did not acknowledge");
+        if(!fs.existsSync(ready) || fs.readFileSync(lock,"utf8")!==id)throw Error("worker_no_ready");
         // The worker may not touch Codex until this single-use permit exists.
         fs.writeFileSync(path.join(state,id+".go"),"go",{flag:"wx"});
-      }catch{
+      }catch(error){
+        let reason=/^(?:wmi_(?:result|hresult|native)_-?[0-9]+|broker_[a-z0-9_-]+|worker_no_ready)$/i.test(error.message)?error.message:"startup";
+        try{
+          const result=JSON.parse(fs.readFileSync(path.join(state,"latest.json"),"utf8"));
+          if(result.id===id && /^worker_(?:forms|script|permit)$/.test(result.reason))reason=result.reason;
+        }catch{}
         if(handle!==undefined)fs.closeSync(handle);
         let ownLock=false;
         try{ownLock=fs.readFileSync(lock,"utf8")===id;}catch{}
         if(ownLock){
-          fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"failed",reason:"startup",updated:new Date().toISOString()}));
+          fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"failed",kind:intent.action,reason,updated:new Date().toISOString()}));
           fs.rmSync(lock,{force:true});
         }
         fs.rmSync(path.join(state,id+".ready"),{force:true});
 
-        throw Error("后台未确认启动，已取消本次操作。账号未改变，可以重试。");
+        throw Error("后台未确认启动，已取消本次操作。账号未改变。诊断代码："+reason);
       }
       return {id,status:"queued"};
     }
   };
 }
+
 
 

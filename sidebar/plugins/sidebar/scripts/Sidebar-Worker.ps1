@@ -1,5 +1,5 @@
 ﻿param(
- [Parameter(Mandatory)][ValidateSet('Save','Switch')][string]$Action,
+ [Parameter(Mandatory)][ValidateSet('Save','Switch','Probe')][string]$Action,
  [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
  [Parameter(Mandatory)][ValidatePattern('^[a-f0-9-]{36}\z')][string]$OperationId,
  [Parameter(Mandatory)][string]$StateDir,
@@ -15,20 +15,22 @@ function Test-OwnLock {
 }
 function Write-State($status,$reason) {
  if(!(Test-OwnLock)){return}
- $data=@{id=$OperationId;status=$status;reason=$reason;updated=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress
+ $data=@{id=$OperationId;status=$status;kind=$Action;reason=$reason;updated=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress
  $temp=Join-Path $StateDir ($OperationId+'.tmp')
  [IO.File]::WriteAllText($temp,$data,[Text.UTF8Encoding]::new($false))
  $target=Join-Path $StateDir 'latest.json'
  if([IO.File]::Exists($target)){[IO.File]::Replace($temp,$target,[NullString]::Value)}else{[IO.File]::Move($temp,$target)}
 }
 if(!(Test-OwnLock)){exit 1}
-$phase='startup'
+$phase='worker_forms'
 try {
  Add-Type -AssemblyName System.Windows.Forms
+ $phase='worker_script'
  . (Join-Path $PSScriptRoot 'Desktop-Restart.ps1')
  if(!(Get-Command Invoke-DockRestartSwitch -ErrorAction SilentlyContinue)){throw 'Worker initialization failed'}
  if(!(Test-OwnLock)){exit 1}
  [IO.File]::WriteAllText($ready,'ready')
+ $phase='worker_permit'
  $timer=[Diagnostics.Stopwatch]::StartNew()
  while(!(Test-Path -LiteralPath $go)){
    if(!(Test-OwnLock)){exit 1}
@@ -36,6 +38,7 @@ try {
    Start-Sleep -Milliseconds 100
  }
  if(!(Test-OwnLock)){exit 1}
+ if($Action -eq 'Probe'){Write-State 'probe_ok';return}
  $phase='operation'
  Write-State 'running'
  $result=Invoke-DockRestartSwitch -SwitchAccount {
