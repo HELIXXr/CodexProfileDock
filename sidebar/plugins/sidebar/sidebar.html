@@ -1,0 +1,87 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profile Dock</title><style>
+:root{color-scheme:light dark;font:15px/1.6 system-ui,sans-serif;--ink:#19213b;--muted:#55617b;--bg:#f2f4fa;--card:white;--line:#e0e4ef;--accent:#4846ae}
+@media(prefers-color-scheme:dark){:root{--ink:#f1f2ff;--muted:#bdc4dc;--bg:#191b27;--card:#252938;--line:#41475c;--accent:#bfc0ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink)}main{max-width:680px;margin:auto;padding:clamp(16px,4vw,36px)}
+header{background:#252a57;color:white;padding:24px;border-radius:16px}header p{margin:0;color:#d4d6ff;font-size:.75rem;letter-spacing:.12em}h1{margin:4px 0 0;font-size:28px}
+section{margin-top:16px;padding:20px;border:1px solid var(--line);background:var(--card);border-radius:16px}h2{font-size:1.05rem;margin:0 0 12px}
+small,p.note{color:var(--muted)}button,input{font:inherit;border-radius:8px;padding:10px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.primary{background:#4946ac;color:white;border-color:#4946ac}.form{display:flex;gap:10px;flex-wrap:wrap}input{min-width:150px;flex:1}#status{white-space:pre-line;overflow-wrap:anywhere;min-height:26px}.error{color:var(--accent)}
+#confirm{border:2px solid var(--accent)}#confirm p{overflow-wrap:anywhere}.actions{display:flex;gap:10px;margin-top:16px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+</style><main>
+<header><p>PROFILE DOCK / LOCAL</p><h1>Codex 账号切换</h1></header>
+<section><div class="top"><h2>已保存账号</h2><button id="refresh" disabled>刷新</button></div><div id="profiles">正在连接本机服务…</div></section>
+<section><h2>保存当前账号</h2><label for="alias">本地别名（例如 Personal）</label><div class="form"><input id="alias" maxlength="32" autocomplete="off"><button id="save" disabled>保存账号</button></div>
+<p class="note">保存也会退出并重开 Codex，以便保存最新登录状态。</p></section>
+<section id="confirm" hidden aria-labelledby="confirmTitle"><h2 id="confirmTitle">确认操作</h2><p id="question"></p>
+<p>请先保存工作，等待其他任务完成。Codex 将退出，当前面板也会关闭。</p><div class="actions"><button id="yes" class="primary">确认并继续</button><button id="no">取消</button></div></section>
+<p id="status" role="status" aria-live="polite">正在连接…</p>
+<p class="note">登录令牌保存在本机加密文件中，不会发送给聊天模型。操作后请核对 Codex 当前账号。</p>
+</main><script>
+const $=s=>document.getElementById(s),pending=new Map();let seq=0,connected=false,busy=false,proposal=null,poll=null,refreshing=false;
+function request(method,params={}){
+ return new Promise((resolve,reject)=>{
+  const id="dock-"+(++seq),timeout=setTimeout(()=>{pending.delete(id);reject(Error("服务响应超时，请刷新面板。"));},15000);
+  pending.set(id,{resolve,reject,timeout});parent.postMessage({jsonrpc:"2.0",id,method,params},"*");
+ });
+}
+window.addEventListener("message",event=>{
+ if(event.source!==parent||event.data?.jsonrpc!=="2.0")return;
+ const m=event.data;
+ if(Object.hasOwn(m,"id")&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);clearTimeout(p.timeout);m.error?p.reject(Error(m.error.message??"请求失败")):p.resolve(m.result);}
+});
+function status(text){$("status").textContent=text;}
+function controls(){
+ $("refresh").disabled=!connected||busy||!!proposal;$("save").disabled=!connected||busy||!!proposal;
+ $("alias").disabled=busy||!!proposal;document.querySelectorAll("[data-switch]").forEach(b=>b.disabled=busy||!!proposal);
+}
+async function tool(name,args={}){
+ const r=await request("tools/call",{name,arguments:args});
+ if(r.isError)throw Error(r.content?.find(c=>c.type==="text")?.text??"操作失败");
+ return r._meta?.panel??{};
+}
+async function refresh(){
+ if(refreshing||proposal)return;refreshing=true;
+ try{
+  const data=await tool("list_profiles");busy=!!data.busy;$("profiles").replaceChildren();
+  for(const name of data.profiles??[]){
+   const row=document.createElement("div");row.className="row";const label=document.createElement("strong");label.textContent=name;
+   const button=document.createElement("button");button.textContent="切换并重开";button.dataset.switch="";button.onclick=()=>prepare("Switch",name);row.append(label,button);$("profiles").append(row);
+  }
+  if(!data.profiles?.length)$("profiles").textContent="还没有保存的账号。";
+  const statuses={queued:"后台流程已排队，请稍候。",running:"正在退出并处理账号，Codex 会暂时关闭。",requested:"上次账号操作已完成，并已请求重开 Codex。请核对当前账号。",manual:"账号操作已完成，请手动打开 Codex 并核对账号。",failed:"上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。"};
+  status(data.operation?statuses[data.operation.status]??"请核对账号。":"请选择账号，或保存当前登录。");
+  controls();
+ }catch(e){status(e.message);}finally{refreshing=false;}
+}
+async function prepare(action,name){
+ if(busy||proposal)return;
+ try{
+  proposal=await tool("prepare_operation",{action,name:name.trim()});
+  $("question").textContent=action==="Switch"?"切换到「"+proposal.name+"」？":"将当前登录保存为「"+proposal.name+"」？";
+  $("confirm").hidden=false;controls();$("no").focus();
+ }catch(e){proposal=null;status(e.message);controls();}
+}
+$("save").onclick=()=>prepare("Save",$("alias").value);
+$("refresh").onclick=refresh;
+$("no").onclick=()=>{proposal=null;$("confirm").hidden=true;controls();};
+$("yes").onclick=async()=>{
+ if(!proposal)return;
+ const ticket=proposal.ticket;$("yes").disabled=true;$("no").disabled=true;
+ try{
+  await tool("start_operation",{ticket});proposal=null;$("confirm").hidden=true;busy=true;controls();
+  status("已交给本机后台。Codex 即将退出，请等待重开。");setTimeout(refresh,1200);
+ }catch(e){status(e.message);proposal=null;$("confirm").hidden=true;controls();}
+ finally{$("yes").disabled=false;$("no").disabled=false;}
+};
+(async()=>{
+ try{
+  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.2.0"},appCapabilities:{}});
+  parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
+  connected=true;await refresh();poll=setInterval(refresh,3500);
+ }catch(e){status(e.message);}
+})();
+window.addEventListener("pagehide",()=>clearInterval(poll));
+</script></html>

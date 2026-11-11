@@ -1,0 +1,15 @@
+{
+  "name": "helix-profile-dock-preview",
+  "interface": {
+    "displayName": "Profile Dock Sidebar Preview"
+  },
+  "plugins": [
+    {
+      "name": "helix-codex-profile-dock-sidebar",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sidebar"
+      }
+    }
+  ]
+}
