@@ -4,9 +4,13 @@ import {createBackend} from "./backend.mjs";
 const backend=createBackend(),uri="ui://profile-dock/sidebar.html";
 const resource={uri,name:"Profile Dock",mimeType:"text/html;profile=mcp-app"};
 const html=readFileSync(new URL("./sidebar.html",import.meta.url),"utf8");
+const entryIcons=["light","dark"].map(theme=>({
+ src:"data:image/png;base64,"+readFileSync(new URL("./assets/profile-dock-"+theme+".png",import.meta.url)).toString("base64"),
+ mimeType:"image/png",sizes:["128x128"],theme
+}));
 const schema={type:"object",properties:{},additionalProperties:false};
 const tools=[
- {name:"open_sidebar_preview",title:"Profile Dock",description:"Open the local account panel.",inputSchema:schema,annotations:{readOnlyHint:true,openWorldHint:false},_meta:{ui:{resourceUri:uri},"openai/ui":{entrypoints:[{type:"global"}]}}},
+ {name:"open_sidebar_preview",title:"Profile Dock",description:"Open the local account panel.",inputSchema:schema,icons:entryIcons,annotations:{readOnlyHint:true,openWorldHint:false},_meta:{ui:{resourceUri:uri},"openai/ui":{entrypoints:[{type:"global"}]}}},
  ...[
  ["list_profiles",schema,true],
  ["probe_worker",schema,false],
@@ -18,7 +22,7 @@ const tools=[
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.5.0"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.6.0"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{

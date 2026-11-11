@@ -1,4 +1,4 @@
-# Profile Dock 原生侧栏版（0.5.0 Beta）
+# Profile Dock 原生侧栏版（0.6.0 Beta）
 
 从 Codex 原生侧栏选择、保存和切换本机账号。支持 Windows、Node.js 和 Microsoft Store 版 Codex 桌面应用。
 
@@ -12,7 +12,7 @@
 
 账号记录沿用 %LOCALAPPDATA%\CodexProfileDock（或旧版 LocalCodexSwitch）。侧栏和 Explorer 工作进程共用 %USERPROFILE%\.codex-profile-dock-sidebar。此目录只含操作状态和本地回执，不含登录令牌。不要分享账号备份或 auth.json。
 
-在账号旁点击「刷新用量」，可以查询 OpenAI 返回的额度窗口、剩余百分比和重置时间。查询时 Codex 可保持打开。只把短期访问令牌通过本机管道交给临时 Codex App Server，进程结束后清理临时目录。侧栏只接收额度数据，查询结果保留在本次插件会话中。查询失败时可继续切换账号；如果登录快照过期，请先用对应账号登录并重新保存。
+在「已保存账号」顶部点击「刷新」，可以查询各账号的额度窗口、剩余百分比和重置时间。账号旁的额度环显示各窗口中最低的剩余百分比。查询时 Codex 可保持打开。只把短期访问令牌通过本机管道交给临时 Codex App Server，进程结束后清理临时目录。侧栏只接收额度数据，查询结果保留在本次插件会话中。查询失败时可继续切换账号；如果登录快照过期，请先用对应账号登录并重新保存。
 
 ## 测试
 在 Windows 上可运行 `node plugins/sidebar/test-startup.mjs` 和 `node plugins/sidebar/test-interrupted.mjs`；测试使用临时目录。
