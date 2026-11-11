@@ -24,7 +24,7 @@ try{
  assert.equal(b.list().operation.status,"probe_ok",JSON.stringify(b.list().operation));
  assert.equal(b.list().busy,false);
  assert.equal(b.list().companionOnline,false);
- assert.deepEqual(fs.readdirSync(path.join(local,"CodexProfileDockSidebar")).sort(),["companion.instance","latest.json"]);
+ assert.deepEqual(fs.readdirSync(path.join(local,"CodexProfileDockSidebar")).sort(),["companion-diagnostics.log","companion.instance","latest.json"]);
  console.log("PASS: offline refusal, real companion handshake, no-op probe, and clean completion.");
 }finally{
  if(child && child.exitCode===null){child.kill();await new Promise(r=>child.once("close",r));}

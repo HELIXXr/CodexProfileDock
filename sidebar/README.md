@@ -16,3 +16,5 @@
 ## 测试
 运行 `node plugins/sidebar/test-companion.mjs`，通过临时目录测试真实助手和自检，不触碰账号。
 
+
+如自检失败，可查看 %LOCALAPPDATA%\CodexProfileDockSidebar\companion-diagnostics.log。日志只记录时间和阶段，不含账号别名或令牌。

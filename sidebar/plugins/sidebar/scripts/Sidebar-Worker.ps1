@@ -21,7 +21,11 @@ function Write-State($status,$reason) {
  $target=Join-Path $StateDir 'latest.json'
  if([IO.File]::Exists($target)){[IO.File]::Replace($temp,$target,[NullString]::Value)}else{[IO.File]::Move($temp,$target)}
 }
-if(!(Test-OwnLock)){return}
+if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace 'worker_entered' }
+if(!(Test-OwnLock)){
+ if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace 'worker_no_lock' }
+ return
+}
 $phase='worker_forms'
 try {
  Add-Type -AssemblyName System.Windows.Forms
@@ -30,6 +34,7 @@ try {
  if(!(Get-Command Invoke-DockRestartSwitch -ErrorAction SilentlyContinue)){throw 'Worker initialization failed'}
  if(!(Test-OwnLock)){return}
  [IO.File]::WriteAllText($ready,'ready')
+ if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace 'worker_ready' }
  $phase='worker_permit'
  $timer=[Diagnostics.Stopwatch]::StartNew()
  while(!(Test-Path -LiteralPath $go)){
@@ -45,7 +50,10 @@ try {
    $null=& (Join-Path $PSScriptRoot 'Switch-Codex.ps1') -Action $Action -Name $Name -Vault $Vault -CodexHome $CodexHome
  } -Progress {param($message)} -Pump {}
  if($result -eq 'Manual'){Write-State 'manual'}else{Write-State 'requested'}
-}catch{Write-State 'failed' $phase}finally{
+}catch{
+ if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace ('worker_error '+$phase+' '+$_.Exception.GetType().Name) }
+ Write-State 'failed' $phase
+}finally{
  foreach($marker in $ready,$go){if(Test-Path -LiteralPath $marker){Remove-Item -LiteralPath $marker}}
  if(Test-OwnLock){Remove-Item -LiteralPath $lock}
 }
