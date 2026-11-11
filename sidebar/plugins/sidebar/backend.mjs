@@ -7,6 +7,13 @@ import {randomUUID} from "node:crypto";
 import {readProfileUsage} from "./usage.mjs";
 export const validName = n => typeof n==="string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(n);
 
+export class PanelError extends Error {
+  constructor(code, reason) {
+    super(code);
+    this.reason = reason;
+  }
+}
+
 function workerAlive(pid){
   try{process.kill(pid,0);return true;}catch(error){return error.code!=="ESRCH";}
 }
@@ -23,7 +30,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   const lock=path.join(state,"operation.lock");
   function profiles(){
     try { return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
-    catch(e){if(e.code==="ENOENT")return [];throw Error("无法读取账号别名。");}
+    catch(e){if(e.code==="ENOENT")return [];throw new PanelError("profiles_unreadable");}
   }
   function profileRef(name){
     try{
@@ -97,13 +104,13 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
     },
     async renameProfile({name,newName}={}){
       if(!validName(name)||!validName(newName)||/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(newName)){
-        throw Error("请输入 1–32 位字母、数字、短横线或下划线，以字母或数字开头，并避开 Windows 保留名称。");
+        throw new PanelError("rename_invalid");
       }
       const names=profiles();
-      if(!names.includes(name))throw Error("所选账号不存在，请刷新列表。");
+      if(!names.includes(name))throw new PanelError("profile_missing");
       if(name===newName)return {name:newName};
       if(names.some(other=>other!==name&&other.toLowerCase()===newName.toLowerCase())){
-        throw Error("此别名已被其他账号使用。");
+        throw new PanelError("rename_exists");
       }
       const ticket=randomUUID();
       pending.set(ticket,{action:"Rename",name,newName,expires:Date.now()+120000});
@@ -116,22 +123,17 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
           try{result=JSON.parse(fs.readFileSync(receipt,"utf8"));}catch{}
           if(result?.id===id){
             if(result.status==="renamed")return {name:newName};
-            const messages={
-              rename_exists:"此别名已被其他账号使用。",
-              rename_missing:"所选账号不存在，请刷新列表。",
-              rename_busy:"账号记录正在使用，请稍后再试。",
-              rename_invalid:"这个别名不能用作 Windows 文件名。"
-            };
-            throw Error(messages[result.reason]??"无法重命名账号，请刷新列表后重试。");
+            const knownReasons=["rename_exists","rename_missing","rename_busy","rename_invalid"];
+            throw new PanelError(knownReasons.includes(result.reason)?result.reason:"rename_failed");
           }
           await delay(100);
         }
-        throw Error("未收到重命名回执，请刷新列表核对。");
+        throw new PanelError("rename_no_receipt");
       }finally{fs.rmSync(receipt,{force:true});}
     },
     prepare({action,name}={}){
-      if(!["Save","Switch"].includes(action)||!validName(name))throw Error("请输入 1–32 位英文、数字、短横线或下划线别名，并以字母或数字开头。");
-      if(action==="Switch"&&!profiles().includes(name))throw Error("所选账号不存在，请刷新列表。");
+      if(!["Save","Switch"].includes(action)||!validName(name))throw new PanelError("alias_invalid");
+      if(action==="Switch"&&!profiles().includes(name))throw new PanelError("profile_missing");
       pending.clear();
       const ticket=randomUUID();pending.set(ticket,{action,name,expires:Date.now()+120000});
       return {ticket,action,name};
@@ -142,12 +144,12 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
     },
     async start({ticket}={}){
       const intent=pending.get(ticket);pending.delete(ticket);
-      if(!intent||intent.expires<Date.now())throw Error("确认已过期，请重新选择账号。");
-      if(intent.action==="Switch"&&!profiles().includes(intent.name))throw Error("所选账号已不存在。");
+      if(!intent||intent.expires<Date.now())throw new PanelError("ticket_expired");
+      if(intent.action==="Switch"&&!profiles().includes(intent.name))throw new PanelError("profile_missing");
       fs.mkdirSync(state,{recursive:true});
       inspectOperation();
       let handle;
-      try{handle=fs.openSync(lock,"wx");}catch(e){if(e.code==="EEXIST")throw Error("有操作正在进行；如上次异常终止，请先确认没有后台切换进程，再移除 operation.lock。");throw e;}
+      try{handle=fs.openSync(lock,"wx");}catch(e){if(e.code==="EEXIST")throw new PanelError("operation_busy");throw e;}
       const id=randomUUID();
       try{
         fs.writeFileSync(handle,id);fs.closeSync(handle);handle=undefined;
@@ -181,8 +183,8 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
           fs.rmSync(path.join(state,id+suffix),{force:true});
         }
 
-        if(reason==="profile_missing")throw Error("所选账号已不存在。");
-        throw Error("后台未确认启动，已取消本次操作。账号未改变。诊断代码："+reason);
+        if(reason==="profile_missing")throw new PanelError("profile_missing");
+        throw new PanelError("worker_start_failed",reason);
       }
       return {id,status:"queued"};
     }

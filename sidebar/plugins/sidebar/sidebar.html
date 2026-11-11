@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Profile Dock</title><style>
 :root{
  color-scheme:light dark;font:14px/1.55 system-ui,"Segoe UI","Microsoft YaHei UI",sans-serif;
@@ -80,48 +80,178 @@ label{display:block;margin-top:10px;font-size:.875rem;font-weight:600}
 <header>
  <div class="brand">
   <span class="brand-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M8 3h10a3 3 0 0 1 3 3v10"/><rect x="3" y="6" width="15" height="15" rx="4"/><circle cx="10.5" cy="11.5" r="2"/><path d="M6.5 17a4.6 4.6 0 0 1 8 0"/></svg></span>
-  <div><p class="eyebrow">Profile Dock</p><h1>Codex 账号切换</h1></div>
+  <div><p class="eyebrow">Profile Dock</p><h1 data-i18n="title"></h1></div>
  </div>
- <p id="status" class="status" role="status" aria-live="polite">正在连接…</p>
+ <p id="status" class="status" role="status" aria-live="polite"></p>
  <p id="startup" class="status" role="status" hidden></p>
 </header>
 <section aria-labelledby="profiles-title">
  <div class="top">
-  <h2 id="profiles-title">已保存账号</h2>
+  <h2 id="profiles-title" data-i18n="saved_accounts"></h2>
   <div class="toolbar">
-   <button id="probe" disabled><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8h3l2-4 3 8 2-4h3"/></svg>测试后台</button>
-   <button id="refresh" class="refresh" disabled><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6A5.7 5.7 0 1 0 13 11.3M13.5 2.8V6h-3.2"/></svg><span id="refresh-label">刷新</span></button>
+   <button id="probe" disabled><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8h3l2-4 3 8 2-4h3"/></svg><span data-i18n="test_worker"></span></button>
+   <button id="refresh" class="refresh" disabled><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6A5.7 5.7 0 1 0 13 11.3M13.5 2.8V6h-3.2"/></svg><span id="refresh-label"></span></button>
   </div>
  </div>
- <div id="profiles"><p class="empty-state">正在连接本机服务…</p></div>
+ <div id="profiles"><p class="empty-state" data-i18n="connecting_local"></p></div>
 </section>
 <section id="rename" hidden aria-labelledby="renameTitle">
-<h2 id="renameTitle">重命名账号</h2>
+<h2 id="renameTitle"></h2>
 <form id="rename-form" novalidate>
-<label for="rename-alias">新别名</label>
+<label for="rename-alias" data-i18n="new_alias"></label>
 <div class="form"><input id="rename-alias" maxlength="32" autocomplete="off" spellcheck="false"></div>
 <p id="rename-error" role="alert"></p>
-<div class="actions"><button type="submit" id="rename-save" class="primary">保存别名</button><button type="button" id="rename-cancel">取消</button></div>
+<div class="actions"><button type="submit" id="rename-save" class="primary" data-i18n="save_alias"></button><button type="button" id="rename-cancel" data-i18n="cancel"></button></div>
 </form></section>
-<section id="confirm" hidden aria-labelledby="confirmTitle"><h2 id="confirmTitle">确认操作</h2><p id="question"></p>
-<p class="note">请先保存工作，等待其他任务完成。Codex 会退出并自动重开，当前面板会关闭。</p><div class="actions"><button id="yes" class="primary">确认并继续</button><button id="no">取消</button></div></section>
-<section aria-labelledby="save-title"><h2 id="save-title">保存当前账号</h2><label for="alias">本地别名（例如 Personal）</label><div class="form"><input id="alias" maxlength="32" autocomplete="off" spellcheck="false"><button id="save" class="primary" disabled>保存账号</button></div>
-<p class="note">保存也会退出并重开 Codex，以便保存最新登录状态。</p></section>
-<p class="note privacy"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.5" rx="1.5"/><path d="M5.4 7V5a2.6 2.6 0 0 1 5.2 0v2M8 9.6v1.4"/></svg><span>登录令牌保存在本机加密文件中，不会发送给聊天模型。操作后请核对 Codex 当前账号。</span></p>
+<section id="confirm" hidden aria-labelledby="confirmTitle"><h2 id="confirmTitle" data-i18n="confirm_title"></h2><p id="question"></p>
+<p class="note" data-i18n="confirm_note"></p><div class="actions"><button id="yes" class="primary" data-i18n="continue"></button><button id="no" data-i18n="cancel"></button></div></section>
+<section aria-labelledby="save-title"><h2 id="save-title" data-i18n="save_title"></h2><label for="alias" data-i18n="alias_label"></label><div class="form"><input id="alias" maxlength="32" autocomplete="off" spellcheck="false"><button id="save" class="primary" disabled data-i18n="save_account"></button></div>
+<p class="note" data-i18n="save_note"></p></section>
+<p class="note privacy"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.5" rx="1.5"/><path d="M5.4 7V5a2.6 2.6 0 0 1 5.2 0v2M8 9.6v1.4"/></svg><span data-i18n="privacy"></span></p>
 </main><script>
 const $=s=>document.getElementById(s),pending=new Map();let seq=0,connected=false,busy=false,proposal=null,poll=null,refreshing=null,usageLoading=false,renaming=null,renameBusy=false;
+const messages={
+ title:["Codex account switcher","Codex 账号切换"],
+ saved_accounts:["Saved accounts","已保存账号"],
+ test_worker:["Test background","测试后台"],
+ refresh:["Refresh","刷新"],
+ refresh_progress:["Refresh {index}/{total}","刷新 {index}/{total}"],
+ connecting:["Connecting…","正在连接…"],
+ connecting_local:["Connecting to the local service…","正在连接本机服务…"],
+ rename_title:["Rename account","重命名账号"],
+ rename_target:["Rename “{name}”","重命名「{name}」"],
+ new_alias:["New alias","新别名"],
+ save_alias:["Save alias","保存别名"],
+ cancel:["Cancel","取消"],
+ confirm_title:["Confirm action","确认操作"],
+ confirm_note:["Save your work and wait for running tasks to finish. Codex will quit and reopen, and this panel will close.","请先保存工作，等待其他任务完成。Codex 会退出并自动重开，当前面板会关闭。"],
+ continue:["Confirm and continue","确认并继续"],
+ save_title:["Save current account","保存当前账号"],
+ alias_label:["Local alias (e.g. Personal)","本地别名（例如 Personal）"],
+ save_account:["Save account","保存账号"],
+ save_note:["Saving also restarts Codex so the latest sign-in can be saved.","保存也会退出并重开 Codex，以便保存最新登录状态。"],
+ privacy:["Sign-in tokens are encrypted on this computer and are never sent to the chat model. Verify your active account after switching.","登录令牌保存在本机加密文件中，不会发送给聊天模型。操作后请核对 Codex 当前账号。"],
+ panel_timeout:["The service took too long to respond. Reopen the panel and try again.","服务响应超时，请重新打开面板后重试。"],
+ request_failed:["The request failed. Try again.","请求失败，请重试。"],
+ operation_failed:["The action could not be completed. Try again.","操作未完成，请重试。"],
+ profiles_unreadable:["Could not read the saved accounts.","无法读取账号别名。"],
+ alias_invalid:["Use 1–32 letters, digits, hyphens or underscores. Start with a letter or digit.","请输入 1–32 位英文、数字、短横线或下划线，以字母或数字开头。"],
+ rename_invalid:["Use 1–32 letters, digits, hyphens or underscores. Start with a letter or digit and avoid reserved Windows names.","请输入 1–32 位字母、数字、短横线或下划线，以字母或数字开头，并避开 Windows 保留名称。"],
+ profile_missing:["This saved account is missing. Refresh the list.","所选账号不存在，请刷新列表。"],
+ rename_missing:["This saved account is missing. Refresh the list.","所选账号不存在，请刷新列表。"],
+ rename_exists:["Another account already uses that alias.","此别名已被其他账号使用。"],
+ rename_busy:["The account records are in use. Try again shortly.","账号记录正在使用，请稍后再试。"],
+ rename_failed:["Could not rename the account. Refresh the list and try again.","无法重命名账号，请刷新列表后重试。"],
+ rename_no_receipt:["Could not confirm the rename. Refresh the list to check.","未收到重命名回执，请刷新列表核对。"],
+ ticket_expired:["The confirmation expired. Select the account again.","确认已过期，请重新选择账号。"],
+ operation_busy:["Another account action is in progress. Wait and try again.","有账号操作正在进行，请稍后再试。"],
+ startup_busy:["The startup check and quota refresh are in progress.","正在运行启动自检和额度刷新，请稍候。"],
+ worker_start_failed:["The background task did not start. Your account was not changed. Diagnostic code: {reason}","后台未确认启动，已取消本次操作。账号未改变。诊断代码：{reason}"],
+ usage_auth_unavailable:["Could not read this account’s saved sign-in.","无法读取此账号的登录快照。"],
+ usage_cli_unavailable:["Could not find a runnable Codex App Server.","未找到可运行的 Codex App Server。"],
+ usage_expired:["The saved sign-in expired. Sign in to this account in Codex and save it again.","登录快照已过期。请用此账号登录 Codex，保存后再查询。"],
+ usage_no_windows:["OpenAI did not return quota windows for this account.","OpenAI 没有返回此账号的额度窗口。"],
+ usage_timeout:["The quota request timed out. Try again.","额度查询超时，请重试。"],
+ usage_profile_missing:["This saved account is missing.","账号记录已不存在。"],
+ usage_busy:["An account action is in progress. Try again shortly.","账号操作正在进行，请稍后再查。"],
+ usage_unavailable:["Quota is temporarily unavailable. Try again.","暂时无法查询额度，请重试。"],
+ usage_window:["Quota window {index}","额度窗口 {index}"],
+ remaining:["{percent}% left","剩余 {percent}%"],
+ reset_due:["Reset time passed","已到重置时间"],
+ reset_at:["Resets {time}","{time} 重置"],
+ last_checked:["Last checked {time}","上次查询 {time}"],
+ quota_unknown:["No quota data yet","尚无额度数据"],
+ quota_min:["Lowest remaining quota: {percent}%","各窗口中最低剩余 {percent}%"],
+ quota_stale:["Last known minimum: {percent}%. Reset time passed.","上次查询最低剩余 {percent}%，已到重置时间"],
+ usage_checking:["Checking quota…","正在查询额度…"],
+ probe_passed:["Background check passed","后台自检通过"],
+ probe_failed:["Background check failed","后台自检未通过"],
+ probe_pending:["Checking background…","正在自动测试后台…"],
+ startup_refreshing:["{check} · Refreshing quotas…","{check} · 正在刷新额度…"],
+ startup_complete:["{check} · Quotas refreshed for {complete}/{total} accounts","{check} · 额度已刷新 {complete}/{total} 个账号"],
+ startup_skipped:["Startup check skipped while an account action was running.","启动自检已跳过，账号操作正在进行。"],
+ startup_interrupted:["The startup check or quota refresh was interrupted. You can retry manually.","启动自检或额度刷新已中断，可手动重试。"],
+ switch:["Switch","切换"],
+ switch_to:["Switch to {name}","切换到 {name}"],
+ rename:["Rename","重命名"],
+ rename_account:["Rename {name}","重命名 {name}"],
+ no_accounts:["No saved accounts yet.","还没有保存的账号。"],
+ operation_queued:["Starting the background task…","正在确认本机后台启动…"],
+ operation_running:["Applying the account action. Codex will close briefly.","正在退出并处理账号，Codex 会暂时关闭。"],
+ operation_requested:["The account action finished. Codex was asked to reopen. Verify the active account.","上次账号操作已完成，并已请求重开 Codex。请核对当前账号。"],
+ operation_manual:["The account action finished. Open Codex and verify the active account.","账号操作已完成，请手动打开 Codex 并核对账号。"],
+ operation_incomplete:["The last action did not complete. Verify the active account and fully quit Codex before retrying.","上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。"],
+ operation_interrupted:["The last action was interrupted. Verify the active account before retrying.","上次操作被中断。未自动重试，请先核对当前账号。"],
+ rename_queued:["Starting the rename…","正在启动重命名…"],
+ rename_running:["Saving the new alias…","正在保存新别名…"],
+ rename_complete:["Account renamed.","账号已重命名。"],
+ rename_incomplete:["The last rename did not complete.","上次重命名未完成。"],
+ rename_interrupted:["The last rename was interrupted. Refresh the list to check.","上次重命名已中断，请刷新列表核对。"],
+ verify_alias:["Verify the saved alias.","请核对账号别名。"],
+ verify_account:["Verify the active account.","请核对账号。"],
+ choose_account:["Choose a saved account or save your current sign-in.","请选择账号，或保存当前登录。"],
+ probe_ok:["Background check passed. Codex and the active account were unchanged.","后台自检通过。没有退出 Codex，也没有改动账号。"],
+ confirm_switch:["Switch to “{name}”?","切换到「{name}」？"],
+ confirm_save:["Save the current sign-in as “{name}”?","将当前登录保存为「{name}」？"],
+ probe_manual:["Testing the background task…","正在测试后台启动，不会退出 Codex 或改动账号…"],
+ restart_requested:["The background task is ready. Codex will quit and reopen shortly.","已交给本机后台。Codex 即将退出，请等待重开。"]
+};
+
+let language, dateFormat, percentFormat, durations, lastProfiles, refreshProgress, checkingProfile;
+let statusMessage=["connecting"], renameMessage=null;
+
+function t(key, values={}){
+ const variants=Object.hasOwn(messages,key)?messages[key]:messages.operation_failed;
+ return variants[language==="zh"?1:0].replace(/\{(\w+)\}/g,(_,name)=>String(values[name]??""));
+}
+
+function applyLocale(locale){
+ const next=/^zh(?:[-_]|$)/i.test(locale??"")?"zh":"en";
+ if(language===next)return;
+ language=next;
+ document.documentElement.lang=next==="zh"?"zh-CN":"en";
+ dateFormat=new Intl.DateTimeFormat(next==="zh"?"zh-CN":"en-US",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+ percentFormat=new Intl.NumberFormat(next,{maximumFractionDigits:1});
+ durations=Object.fromEntries(["day","hour","minute"].map(unit=>[unit,new Intl.NumberFormat(next,{style:"unit",unit,unitDisplay:"long"})]));
+ for(const node of document.querySelectorAll("[data-i18n]"))node.textContent=t(node.dataset.i18n);
+ $("status").textContent=t(...statusMessage);
+ renderRefreshLabel();
+ renderEditors();
+ if(lastProfiles){
+  showStartup(lastProfiles.startup);
+  renderProfiles(lastProfiles);
+ }
+}
+
+function renderRefreshLabel(){
+ $("refresh-label").textContent=refreshProgress?t("refresh_progress",refreshProgress):t("refresh");
+}
+
+function renderEditors(){
+ $("renameTitle").textContent=renaming?t("rename_target",{name:renaming}):t("rename_title");
+ $("rename-error").textContent=renameMessage?t(...renameMessage):"";
+ if(proposal)$("question").textContent=t(proposal.action==="Switch"?"confirm_switch":"confirm_save",{name:proposal.name});
+}
 function request(method,params={},timeoutMs=15000){
  return new Promise((resolve,reject)=>{
-  const id="dock-"+(++seq),timeout=setTimeout(()=>{pending.delete(id);reject(Error("服务响应超时，请刷新面板。"));},timeoutMs);
+  const id="dock-"+(++seq),timeout=setTimeout(()=>{pending.delete(id);reject(Error("panel_timeout"));},timeoutMs);
   pending.set(id,{resolve,reject,timeout});parent.postMessage({jsonrpc:"2.0",id,method,params},"*");
  });
 }
 window.addEventListener("message",event=>{
  if(event.source!==parent||event.data?.jsonrpc!=="2.0")return;
  const m=event.data;
- if(Object.hasOwn(m,"id")&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);clearTimeout(p.timeout);m.error?p.reject(Error(m.error.message??"请求失败")):p.resolve(m.result);}
+ if(m.method==="ui/notifications/host-context-changed"&&typeof m.params?.locale==="string"){
+  applyLocale(m.params.locale);
+  return;
+ }
+ if(Object.hasOwn(m,"id")&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);clearTimeout(p.timeout);m.error?p.reject(Error("request_failed")):p.resolve(m.result);}
 });
-function status(text){$("status").textContent=text;}
+function status(key, values){
+ statusMessage=[key,values];
+ $("status").textContent=t(...statusMessage);
+}
+function showError(error){status(error.message,{reason:error.reason});}
 const usageErrors=new Map();
 function controls(){
  const locked=busy||!!proposal||usageLoading||renaming!==null||renameBusy;
@@ -133,43 +263,46 @@ function controls(){
 }
 async function tool(name,args={}){
  const r=await request("tools/call",{name,arguments:args},name==="rename_profile"?22000:15000);
- if(r.isError)throw Error(r.content?.find(c=>c.type==="text")?.text??"操作失败");
+ if(r.isError){
+  const failure=r._meta?.panelError;
+  throw Object.assign(Error(failure?.code??"operation_failed"),{reason:failure?.reason});
+ }
  return r._meta?.panel??{};
 }
-const dateFormat=new Intl.DateTimeFormat("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
-const percentFormat=new Intl.NumberFormat("zh-CN",{maximumFractionDigits:1});
-const usageMessages={
- usage_auth_unavailable:"无法读取此账号的登录快照。",
- usage_cli_unavailable:"未找到可运行的 Codex App Server。",
- usage_expired:"登录快照已过期。请用此账号登录 Codex，保存后再查询。",
- usage_no_windows:"OpenAI 没有返回此账号的额度窗口。",
- usage_timeout:"额度查询超时，请重试。",
- usage_profile_missing:"账号记录已不存在。",
- usage_busy:"账号操作正在进行，请稍后再查。"
-};
-function renderUsage(summary,snapshot,message){
+function usageErrorCode(code){
+ return typeof code==="string"&&code.startsWith("usage_")&&Object.hasOwn(messages,code)?code:"usage_unavailable";
+}
+function durationLabel(minutes, index){
+ if(minutes===null)return t("usage_window",{index});
+ if(minutes%1440===0)return durations.day.format(minutes/1440);
+ if(minutes%60===0)return durations.hour.format(minutes/60);
+ return durations.minute.format(minutes);
+}
+function renderUsage(summary,snapshot,errorCode){
+ if(summary.dataset.usageSummary===checkingProfile){
+  summary.textContent=t("usage_checking");
+  return;
+ }
  if(snapshot){
   const windows=document.createElement("dl");windows.className="usage-windows";
   for(const [i,window] of snapshot.windows.entries()){
-   const mins=window.minutes;
-   const label=mins===null?"额度窗口 "+(i+1):mins%1440===0?mins/1440+" 天":mins%60===0?mins/60+" 小时":mins+" 分钟";
    const reset=window.resetsAt?window.resetsAt*1000:null;
    const item=document.createElement("div");item.className="usage-window";
-   const term=document.createElement("dt");term.textContent=label;
-   const value=document.createElement("dd");value.textContent="剩余 "+percentFormat.format(window.remaining)+"%";
+   const term=document.createElement("dt");term.textContent=durationLabel(window.minutes,i+1);
+   const value=document.createElement("dd");value.textContent=t("remaining",{percent:percentFormat.format(window.remaining)});
    item.append(term,value);
    if(reset!==null){
     const time=document.createElement("dd");time.className="reset usage-meta";
-    time.textContent=reset<=Date.now()?"已到重置时间":dateFormat.format(reset)+" 重置";
+    time.textContent=reset<=Date.now()?t("reset_due"):t("reset_at",{time:dateFormat.format(reset)});
     item.append(time);
    }
    windows.append(item);
   }
   const checked=document.createElement("p");checked.className="usage-meta";
-  checked.textContent="上次查询 "+dateFormat.format(new Date(snapshot.checkedAt));
+  checked.textContent=t("last_checked",{time:dateFormat.format(new Date(snapshot.checkedAt))});
   summary.append(windows,checked);
  }
- if(message){const error=document.createElement("p");error.className="usage-error";error.textContent=message;summary.append(error);}
+ if(errorCode){const error=document.createElement("p");error.className="usage-error";error.textContent=t(usageErrorCode(errorCode));summary.append(error);}
  summary.hidden=!summary.hasChildNodes();
 }
 function quotaBadge(snapshot){
@@ -179,15 +312,15 @@ function quotaBadge(snapshot){
  if(!snapshot?.windows.length){
   badge.dataset.state="unknown";
   badge.append("—");
-  badge.title="尚无额度数据";
+  badge.title=t("quota_unknown");
  }else{
   const remaining=Math.min(...snapshot.windows.map(window=>window.remaining));
   const stale=snapshot.windows.some(window=>window.resetsAt && window.resetsAt*1000<=Date.now());
   badge.dataset.state=stale?"stale":remaining<=20?"low":remaining<=50?"medium":"good";
   ring.style.setProperty("--quota-progress",remaining+"%");
-  const text=percentFormat.format(remaining)+"%";
-  badge.append(text);
-  badge.title=(stale?"上次查询最低剩余 ":"各窗口中最低剩余 ")+text+(stale?"，已到重置时间":"");
+  const percent=percentFormat.format(remaining);
+  badge.append(percent+"%");
+  badge.title=t(stale?"quota_stale":"quota_min",{percent});
  }
  badge.setAttribute("aria-label",badge.title);
  return badge;
@@ -203,83 +336,89 @@ async function refreshAllUsage(){
  try{
   const data=await refresh();
   if(!data?.profiles?.length||data.busy)return;
-  const summaries=Array.from(document.querySelectorAll("[data-usage-summary]"));
   for(const [index,name] of data.profiles.entries()){
-   $("refresh-label").textContent="刷新 "+(index+1)+"/"+data.profiles.length;
+   refreshProgress={index:index+1,total:data.profiles.length};
+   renderRefreshLabel();
+   checkingProfile=name;
    usageErrors.delete(name);
-   const summary=summaries.find(element=>element.dataset.usageSummary===name);
-   if(summary){summary.hidden=false;summary.textContent="正在查询额度…";}
+   const summary=Array.from(document.querySelectorAll("[data-usage-summary]")).find(element=>element.dataset.usageSummary===name);
+   if(summary){summary.hidden=false;summary.textContent=t("usage_checking");}
    try{await tool("refresh_usage",{name});}
-   catch(error){usageErrors.set(name,usageMessages[error.message]??"暂时无法查询额度，请重试。");}
+   catch(error){usageErrors.set(name,usageErrorCode(error.message));}
   }
+  checkingProfile=null;
   await refresh();
  }finally{
-  usageLoading=false;$("refresh-label").textContent="刷新";controls();
+  usageLoading=false;refreshProgress=null;checkingProfile=null;renderRefreshLabel();controls();
  }
 }
 function showStartup(startup){
  const output=$("startup");
  if(!startup){output.hidden=true;return;}
- const probe=startup.probe==="passed"?"后台自检通过":startup.probe==="failed"?"后台自检未通过":"正在自动测试后台…";
- const summary="额度已刷新 "+startup.complete+"/"+startup.total+" 个账号";
+ const probe=t(startup.probe==="passed"?"probe_passed":startup.probe==="failed"?"probe_failed":"probe_pending");
  const messages={
-  running:startup.probe==="pending"?probe:probe+" · 正在刷新额度…",
-  complete:probe+(startup.total?" · "+summary:""),
-  skipped:"启动自检已跳过，账号操作正在进行。",
-  interrupted:"启动自检或额度刷新已中断，可手动重试。"
+  running:startup.probe==="pending"?probe:t("startup_refreshing",{check:probe}),
+  complete:startup.total?t("startup_complete",{check:probe,complete:startup.complete,total:startup.total}):probe,
+  skipped:t("startup_skipped"),
+  interrupted:t("startup_interrupted")
  };
  output.textContent=messages[startup.status]??"";
  output.hidden=!output.textContent;
 }
-async function loadProfiles(){
- try{
-  const data=await tool("list_profiles");busy=!!data.busy;
-  showStartup(data.startup);
+function renderProfiles(data){
   $("profiles").replaceChildren();
   for(const name of data.profiles??[]){
    const row=document.createElement("div");row.className="row";
    const label=document.createElement("strong");label.textContent=name;
    const snapshot=Object.hasOwn(data.usage??{},name)?data.usage[name]:null;
    const identity=document.createElement("div");identity.className="account-label";identity.append(quotaBadge(snapshot),label);
-   const button=document.createElement("button");button.className="switch";button.textContent="切换";button.dataset.switch="";
-   button.setAttribute("aria-label","切换到 "+name);button.onclick=()=>prepare("Switch",name);
+   const button=document.createElement("button");button.className="switch";button.textContent=t("switch");button.dataset.switch="";
+   button.setAttribute("aria-label",t("switch_to",{name}));button.onclick=()=>prepare("Switch",name);
    const actions=document.createElement("div");actions.className="account-actions";
-   const rename=document.createElement("button");rename.textContent="重命名";rename.dataset.rename=name;
-   rename.setAttribute("aria-label","重命名 "+name);rename.onclick=()=>openRename(name);
+   const rename=document.createElement("button");rename.textContent=t("rename");rename.dataset.rename=name;
+   rename.setAttribute("aria-label",t("rename_account",{name}));rename.onclick=()=>openRename(name);
    actions.append(rename,button);
    const summary=document.createElement("div");summary.className="usage";summary.dataset.usageSummary=name;summary.setAttribute("role","status");
-   const error=usageErrors.get(name)??(Object.hasOwn(data.usageErrors??{},name)?usageMessages[data.usageErrors[name]]??"暂时无法查询额度，请重试。":null);
+   const error=usageErrors.get(name)??(Object.hasOwn(data.usageErrors??{},name)?data.usageErrors[name]:null);
    renderUsage(summary,snapshot,error);
    row.append(identity,actions,summary);$("profiles").append(row);
   }
   if(!data.profiles?.length){
-   const empty=document.createElement("p");empty.className="empty-state";empty.textContent="还没有保存的账号。";$("profiles").append(empty);
+   const empty=document.createElement("p");empty.className="empty-state";empty.textContent=t("no_accounts");$("profiles").append(empty);
   }
-  const statuses={queued:"正在确认本机后台启动…",running:"正在退出并处理账号，Codex 会暂时关闭。",requested:"上次账号操作已完成，并已请求重开 Codex。请核对当前账号。",manual:"账号操作已完成，请手动打开 Codex 并核对账号。",failed:"上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。",interrupted:"上次操作被中断。未自动重试，请先核对当前账号。"};
-  const op=data.operation;
-  if(op?.kind==="Rename")status({queued:"正在启动重命名…",running:"正在保存新别名…",renamed:"账号已重命名。",failed:"上次重命名未完成。",interrupted:"上次重命名已中断，请刷新列表核对。"}[op.status]??"请核对账号别名。");
-  else if(op?.status==="probe_ok")status("后台自检通过。没有退出 Codex，也没有改动账号。");
-  else if(op?.status==="failed" && op.reason!=="operation")status("后台启动未完成，账号未改变。诊断代码："+(op.reason||"startup"));
-  else status(op ? statuses[op.status]??"请核对账号。" : "请选择账号，或保存当前登录。");
   controls();
+}
+async function loadProfiles(){
+ try{
+  const data=await tool("list_profiles");busy=!!data.busy;
+  lastProfiles=data;
+  showStartup(data.startup);
+  renderProfiles(data);
+  const statuses={queued:"operation_queued",running:"operation_running",requested:"operation_requested",manual:"operation_manual",failed:"operation_incomplete",interrupted:"operation_interrupted"};
+  const op=data.operation;
+  if(op?.kind==="Rename")status({queued:"rename_queued",running:"rename_running",renamed:"rename_complete",failed:"rename_incomplete",interrupted:"rename_interrupted"}[op.status]??"verify_alias");
+  else if(op?.status==="probe_ok")status("probe_ok");
+  else if(op?.status==="failed" && op.reason!=="operation")status("worker_start_failed",{reason:op.reason||"startup"});
+  else status(op ? statuses[op.status]??"verify_account" : "choose_account");
   return data;
- }catch(e){status(e.message);}
+ }catch(e){showError(e);}
 }
 async function prepare(action,name){
  if(busy||proposal||usageLoading||renaming||renameBusy)return;
  try{
   proposal=await tool("prepare_operation",{action,name:name.trim()});
-  $("question").textContent=action==="Switch"?"切换到「"+proposal.name+"」？":"将当前登录保存为「"+proposal.name+"」？";
+  renderEditors();
   $("confirm").hidden=false;controls();$("no").focus();
- }catch(e){proposal=null;status(e.message);controls();}
+ }catch(e){proposal=null;showError(e);controls();}
 }
 function focusRenameButton(name){
  Array.from(document.querySelectorAll("[data-rename]")).find(button=>button.dataset.rename===name)?.focus();
 }
 function openRename(name){
  if(busy||proposal||usageLoading||renaming||renameBusy)return;
- renaming=name;$("renameTitle").textContent="重命名「"+name+"」";
- $("rename-alias").value=name;$("rename-error").textContent="";$("rename").hidden=false;
+ renaming=name;renameMessage=null;
+ $("rename-alias").value=name;$("rename").hidden=false;
+ renderEditors();
  controls();$("rename-alias").focus();$("rename-alias").select();
 }
 function closeRename(){
@@ -297,25 +436,26 @@ $("rename-form").onsubmit=async event=>{
  if(!renaming||renameBusy)return;
  const name=renaming,newName=$("rename-alias").value.trim();
  if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/.test(newName)){
-  $("rename-error").textContent="请输入 1–32 位英文、数字、短横线或下划线，以字母或数字开头。";
+  renameMessage=["alias_invalid"];
+  renderEditors();
   return;
  }
  if(name===newName)return;
- renameBusy=true;$("rename-error").textContent="";controls();
+ renameBusy=true;renameMessage=null;renderEditors();controls();
  try{
   await tool("rename_profile",{name,newName});
   usageErrors.delete(name);usageErrors.delete(newName);closeRename();
   await refresh();focusRenameButton(newName);
- }catch(error){$("rename-error").textContent=error.message;}
+ }catch(error){renameMessage=[error.message,{reason:error.reason}];renderEditors();}
  finally{renameBusy=false;controls();}
 };
 $("save").onclick=()=>prepare("Save",$("alias").value);
 $("refresh").onclick=refreshAllUsage;
 $("probe").onclick=async()=>{
  if(busy||proposal||usageLoading||renaming||renameBusy)return;
- busy=true;controls();status("正在测试后台启动，不会退出 Codex 或改动账号…");
+ busy=true;controls();status("probe_manual");
  try {await tool("probe_worker");await refresh();}
- catch(e){busy=false;controls();status(e.message);}
+ catch(e){busy=false;controls();showError(e);}
 };
 $("no").onclick=()=>{proposal=null;$("confirm").hidden=true;controls();};
 $("yes").onclick=async()=>{
@@ -323,16 +463,18 @@ $("yes").onclick=async()=>{
  const ticket=proposal.ticket;$("yes").disabled=true;$("no").disabled=true;
  try{
   await tool("start_operation",{ticket});proposal=null;$("confirm").hidden=true;busy=true;controls();
-  status("已交给本机后台。Codex 即将退出，请等待重开。");setTimeout(refresh,1200);
- }catch(e){status(e.message);proposal=null;$("confirm").hidden=true;controls();}
+  status("restart_requested");setTimeout(refresh,1200);
+ }catch(e){showError(e);proposal=null;$("confirm").hidden=true;controls();}
  finally{$("yes").disabled=false;$("no").disabled=false;}
 };
+applyLocale(document.documentElement.lang);
 (async()=>{
  try{
-  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.8.2"},appCapabilities:{}});
+  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.8.3"},appCapabilities:{}});
+  applyLocale(initialized?.hostContext?.locale||document.documentElement.lang);
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);
- }catch(e){status(e.message);}
+ }catch(e){showError(e);}
 })();
 window.addEventListener("pagehide",()=>clearInterval(poll));
 </script></html>

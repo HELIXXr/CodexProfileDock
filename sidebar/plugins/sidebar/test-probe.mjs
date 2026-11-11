@@ -8,7 +8,7 @@ const local=path.join(userProfile,"AppData","Local");
 const state=path.join(userProfile,".codex-profile-dock-sidebar");
 try{
  const denied=createBackend({local,userProfile,launch:async()=>{throw Error("worker_no_ready");}});
- await assert.rejects(denied.probe(),/worker_no_ready/);
+ await assert.rejects(denied.probe(), {message:"worker_start_failed",reason:"worker_no_ready"});
  assert.equal(denied.list().operation.reason,"worker_no_ready");
  assert.equal(denied.list().busy,false);
  let action;

@@ -1,6 +1,10 @@
-# Codex Profile Dock 0.8.2 · Windows 侧栏版
+# Codex Profile Dock 0.8.3 · Windows 侧栏版
+
+[English installation and usage guide](README.en.md)
 
 这是一个非官方的 Codex 桌面插件。你可以在侧栏保存、重命名和切换已登录的 ChatGPT 账号，也可以查看各账号的剩余额度。切换时插件会请求 Codex 正常退出，切换完成后再打开。
+
+侧栏跟随 Codex 的界面语言。Codex 使用中文时显示简体中文，其他语言均显示英文。
 
 ## 安装或升级
 

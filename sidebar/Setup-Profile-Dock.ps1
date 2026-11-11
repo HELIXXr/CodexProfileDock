@@ -8,12 +8,18 @@ $ErrorActionPreference = 'Stop'
 $marketplace = 'helix-profile-dock-preview'
 $plugin = "helix-codex-profile-dock-sidebar@$marketplace"
 $marketplaceFile = '.agents\plugins\marketplace.json'
+$isChinese = (Get-UICulture).TwoLetterISOLanguageName -eq 'zh'
+
+function Setup-Text([string]$English, [string]$Chinese) {
+    if ($isChinese) { return $Chinese }
+    return $English
+}
 
 function Invoke-DockCodex {
     param([string[]]$Arguments)
     & $codex.Source @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Codex CLI 命令失败（退出码 $LASTEXITCODE）：codex $($Arguments -join ' ')"
+        throw (Setup-Text "Codex CLI failed (exit $LASTEXITCODE): codex $($Arguments -join ' ')" "Codex CLI 命令失败（退出码 $LASTEXITCODE）：codex $($Arguments -join ' ')")
     }
 }
 
@@ -31,21 +37,25 @@ try {
     $codex = Get-Command codex -CommandType Application -ErrorAction SilentlyContinue |
         Where-Object { $_.Extension -in '.exe', '.cmd', '.bat' } |
         Select-Object -First 1
-    if (!$codex) { throw '找不到 Codex CLI。请按 README 安装后，重新打开此脚本。' }
+    if (!$codex) {
+        throw (Setup-Text 'Codex CLI was not found. Follow README.en.md, then run this installer again.' '找不到 Codex CLI。请按 README 安装后，重新打开此脚本。')
+    }
 
     if ($Action -eq 'Install') {
         if (!(Test-Path -LiteralPath (Join-Path $PSScriptRoot $marketplaceFile) -PathType Leaf)) {
-            throw '找不到插件目录。请先完整解压 ZIP，再运行安装脚本。'
+            throw (Setup-Text 'Plugin files are missing. Extract the entire ZIP and run the installer again.' '找不到插件目录。请先完整解压 ZIP，再运行安装脚本。')
         }
         $node = Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue |
             Select-Object -First 1
-        if (!$node) { throw '找不到 Node.js。请安装 Node.js 22 或更高版本，并将其加入 PATH。' }
+        if (!$node) {
+            throw (Setup-Text 'Node.js was not found. Install Node.js 22 or later and add it to PATH.' '找不到 Node.js。请安装 Node.js 22 或更高版本，并将其加入 PATH。')
+        }
         $nodeVersion = & $node.Source -p 'process.versions.node'
         if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^(\d+)\.' -or [int]$Matches[1] -lt 22) {
-            throw '此插件需要 Node.js 22 或更高版本。'
+            throw (Setup-Text 'Profile Dock requires Node.js 22 or later.' '此插件需要 Node.js 22 或更高版本。')
         }
         if (!(Get-AppxPackage -Name OpenAI.Codex)) {
-            throw '找不到 Microsoft Store 版 Codex 桌面应用。请先安装并正常打开一次。'
+            throw (Setup-Text 'The Microsoft Store version of Codex was not found. Install it and open it once.' '找不到 Microsoft Store 版 Codex 桌面应用。请先安装并正常打开一次。')
         }
     }
 
@@ -58,7 +68,7 @@ try {
         if ($current) {
             Invoke-DockCodex -Arguments @('plugin', 'marketplace', 'remove', $marketplace)
         }
-        Write-Host '卸载完成。请完全退出并重开 Codex。已保存的账号记录仍在本机。'
+        Write-Host (Setup-Text 'Uninstalled. Fully quit and reopen Codex. Your saved accounts remain on this computer.' '卸载完成。请完全退出并重开 Codex。已保存的账号记录仍在本机。')
         exit 0
     }
 
@@ -86,11 +96,11 @@ try {
                 Register-DockMarketplace -Root $current.root
             }
         } catch {
-            Write-Warning "恢复之前的插件源失败：$($_.Exception.Message)"
+            Write-Warning (Setup-Text "Could not restore the previous marketplace: $($_.Exception.Message)" "恢复之前的插件源失败：$($_.Exception.Message)")
         }
         throw $installError
     }
-    Write-Host '安装完成。请保留解压后的文件夹，完全退出并重开 Codex，然后在侧栏打开 Profile Dock。'
+    Write-Host (Setup-Text 'Installed. Keep the extracted folder, fully quit and reopen Codex, and open Profile Dock from the sidebar.' '安装完成。请保留解压后的文件夹，完全退出并重开 Codex，然后在侧栏打开 Profile Dock。')
 } catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1

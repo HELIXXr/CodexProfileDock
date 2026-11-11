@@ -7,7 +7,7 @@ const local=fs.mkdtempSync(path.join(os.tmpdir(),"dock-start-"));
 const state=path.join(local,".codex-profile-dock-sidebar");
 try{
  const dead=createBackend({local,userProfile:local,launch:async()=>{},startupTimeoutMs:80});
- await assert.rejects(dead.start(dead.prepare({action:"Save",name:"Fixture"})),/后台/);
+ await assert.rejects(dead.start(dead.prepare({action:"Save",name:"Fixture"})), {message:"worker_start_failed",reason:"worker_no_ready"});
  assert.equal(dead.list().busy,false);
  assert.equal(dead.list().operation.status,"failed");
  const good=createBackend({local,userProfile:local,startupTimeoutMs:300,launch:async(args)=>{
