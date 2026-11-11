@@ -2,7 +2,7 @@ import {createBackend,validName} from "./backend.mjs";import fs from "node:fs";i
 const local=fs.mkdtempSync(path.join(os.tmpdir(),"dock-test-"));
 try{
 const vault=path.join(local,"CodexProfileDock");fs.mkdirSync(vault);fs.writeFileSync(path.join(vault,"Personal.dpapi"),"fixture");fs.writeFileSync(path.join(vault,"Work.dpapi"),"fixture");fs.writeFileSync(path.join(vault,"auth.json"),"MUST_NOT_READ");
-const calls=[];const b=createBackend({local,launch:async args=>{calls.push(args);fs.writeFileSync(path.join(local,"CodexProfileDockSidebar",args[5]+".ready"),"ready");}});
+const calls=[];const b=createBackend({local,userProfile:local,launch:async args=>{calls.push(args);fs.writeFileSync(path.join(local,".codex-profile-dock-sidebar",args[5]+".ready"),"ready");}});
 assert.deepEqual(b.list().profiles,["Personal","Work"]);
 for(const name of ["","../x","中文","x".repeat(33)])assert.equal(validName(name),false);
 assert.throws(()=>b.prepare({action:"Switch",name:"Unknown"}));
@@ -13,8 +13,8 @@ assert.equal(result.status,"queued");assert.equal(calls.length,1);assert.equal(c
 await assert.rejects(b.start(ticket));
 await assert.rejects(b.start(b.prepare({action:"Save",name:"Other"})));
 assert.equal(calls.length,1);
-fs.unlinkSync(path.join(local,"CodexProfileDockSidebar","operation.lock"));
-const c=createBackend({local,launch:async()=>{throw Error("fixture");}});
+fs.unlinkSync(path.join(local,".codex-profile-dock-sidebar","operation.lock"));
+const c=createBackend({local,userProfile:local,launch:async()=>{throw Error("fixture");}});
 await assert.rejects(c.start(c.prepare({action:"Save",name:"Other"})));
 assert.equal(c.list().busy,false);assert.equal(c.list().operation.status,"failed");
 assert.equal(fs.readFileSync(path.join(vault,"auth.json"),"utf8"),"MUST_NOT_READ");

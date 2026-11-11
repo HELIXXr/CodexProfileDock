@@ -4,13 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import {createBackend} from "./backend.mjs";
 const local=fs.mkdtempSync(path.join(os.tmpdir(),"dock-start-"));
-const state=path.join(local,"CodexProfileDockSidebar");
+const state=path.join(local,".codex-profile-dock-sidebar");
 try{
- const dead=createBackend({local,launch:async()=>{},startupTimeoutMs:80});
+ const dead=createBackend({local,userProfile:local,launch:async()=>{},startupTimeoutMs:80});
  await assert.rejects(dead.start(dead.prepare({action:"Save",name:"Fixture"})),/后台/);
  assert.equal(dead.list().busy,false);
  assert.equal(dead.list().operation.status,"failed");
- const good=createBackend({local,startupTimeoutMs:300,launch:async(args)=>{
+ const good=createBackend({local,userProfile:local,startupTimeoutMs:300,launch:async(args)=>{
    const id=args[5];
    fs.writeFileSync(path.join(state,id+".ready"),"ready");
  }});

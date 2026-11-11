@@ -9,10 +9,12 @@ function workerAlive(pid){
   try{process.kill(pid,0);return true;}catch(error){return error.code!=="ESRCH";}
 }
 
-export function createBackend({local=process.env.LOCALAPPDATA, codexHome=process.env.CODEX_HOME, launch, startupTimeoutMs=6000, isWorkerAlive=workerAlive}={}) {
+export function createBackend({local=process.env.LOCALAPPDATA, userProfile=process.env.USERPROFILE, codexHome=process.env.CODEX_HOME, launch, startupTimeoutMs=6000, isWorkerAlive=workerAlive}={}) {
   if(!local) throw Error("Windows local data directory is unavailable");
   local=path.resolve(local);
-  const state=path.join(local,"CodexProfileDockSidebar");
+  if(!userProfile) throw Error("Windows user profile directory is unavailable");
+  // Store-packaged Codex redirects new AppData files away from the Explorer worker.
+  const state=path.resolve(userProfile,".codex-profile-dock-sidebar");
   const vault=fs.existsSync(path.join(local,"LocalCodexSwitch"))?path.join(local,"LocalCodexSwitch"):path.join(local,"CodexProfileDock");
   const pending=new Map();
   const lock=path.join(state,"operation.lock");
