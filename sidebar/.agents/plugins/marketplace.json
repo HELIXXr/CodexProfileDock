@@ -1,7 +1,7 @@
 {
   "name": "helix-profile-dock-preview",
   "interface": {
-    "displayName": "Profile Dock Sidebar Preview"
+    "displayName": "Profile Dock"
   },
   "plugins": [
     {

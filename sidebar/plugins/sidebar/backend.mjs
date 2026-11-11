@@ -35,7 +35,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   const run=launch??(args=>new Promise((resolve,reject)=>{
     const exe=path.join(process.env.SystemRoot??"C:\\\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
     const broker=fileURLToPath(new URL("./scripts/Launch-SidebarWorker.ps1",import.meta.url));
-    const child=spawn(exe,["-NoProfile","-STA","-NonInteractive","-WindowStyle","Hidden","-File",broker,...args,
+    const child=spawn(exe,["-NoProfile","-ExecutionPolicy","RemoteSigned","-STA","-NonInteractive","-WindowStyle","Hidden","-File",broker,...args,
       "-StateDir",state,"-Vault",vault,"-CodexHome",home],{stdio:["ignore","pipe","ignore"],windowsHide:true});
     let response="";
     child.stdout.setEncoding("utf8").on("data",chunk=>{response=(response+chunk).slice(-160);});

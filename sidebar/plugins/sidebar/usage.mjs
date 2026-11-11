@@ -16,7 +16,7 @@ export async function readProfileUsage({name, vault, codexHome, state}) {
   let auth;
   try {
     const {stdout} = await promisify(execFile)(powershell,
-      ["-NoProfile", "-NonInteractive", "-File", authScript,
+      ["-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-NonInteractive", "-File", authScript,
         "-Action", "ReadUsageAuth", "-Name", name, "-Vault", vault, "-CodexHome", codexHome],
       {timeout:4000, maxBuffer:64 * 1024, windowsHide:true});
     auth = JSON.parse(stdout);
@@ -70,7 +70,7 @@ export async function queryRateLimits({command, args}, {accessToken, chatgptAcco
       child.stdin.write(JSON.stringify({jsonrpc:"2.0", method, params, id}) + "\n");
     };
     const lines = createInterface({input:child.stdout, crlfDelay:Infinity});
-    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.8.1"},
+    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.8.2"},
       capabilities:{experimentalApi:true}}, 1);
     for await (const line of lines) {
       let message;

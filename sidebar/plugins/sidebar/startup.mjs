@@ -8,7 +8,7 @@ export async function desktopSession(parentPid=process.ppid){
   const powershell=path.join(process.env.SystemRoot??"C:\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
   const script=fileURLToPath(new URL("./scripts/Get-DesktopSession.ps1",import.meta.url));
   try{
-    const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-NonInteractive",
+    const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-ExecutionPolicy","RemoteSigned","-NonInteractive",
       "-File",script,"-ParentId",String(parentPid)],{timeout:4000,windowsHide:true});
     const key=stdout.trim();
     return /^\d+-\d+$/.test(key)?key:null;
@@ -49,7 +49,7 @@ export function createStartupClient({state,local,userProfile,codexHome}){
     const script=fileURLToPath(new URL("./scripts/Launch-StartupWorker.ps1",import.meta.url));
     launchedAt=Date.now();
     try{
-      const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-STA","-NonInteractive",
+      const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-ExecutionPolicy","RemoteSigned","-STA","-NonInteractive",
         "-File",script,"-DesktopSession",key,"-Node",process.execPath,"-Local",local,
         "-UserProfile",userProfile,"-CodexHome",codexHome],{timeout:5000,windowsHide:true});
       launchFailed=stdout.trim()!=="explorer_accepted";

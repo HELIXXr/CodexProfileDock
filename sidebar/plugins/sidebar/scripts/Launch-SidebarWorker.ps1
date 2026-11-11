@@ -15,7 +15,7 @@ function Quote-Argument([string]$value) {
 }
 $worker=Join-Path $PSScriptRoot 'Sidebar-Worker.ps1'
 $exe=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-$arguments='-NoProfile -STA -NonInteractive -WindowStyle Hidden -File '+(Quote-Argument $worker)+
+$arguments='-NoProfile -ExecutionPolicy RemoteSigned -STA -NonInteractive -WindowStyle Hidden -File '+(Quote-Argument $worker)+
  ' -Action '+(Quote-Argument $Action)+' -Name '+(Quote-Argument $Name)+' -OperationId '+(Quote-Argument $OperationId)+
  ' -StateDir '+(Quote-Argument $StateDir)+' -Vault '+(Quote-Argument $Vault)+' -CodexHome '+(Quote-Argument $CodexHome)
 $arguments += if($Action -eq 'Rename'){' -NewName '+(Quote-Argument $NewName)}else{''}
