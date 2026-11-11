@@ -196,7 +196,7 @@ $("yes").onclick=async()=>{
 };
 (async()=>{
  try{
-  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.7.0"},appCapabilities:{}});
+  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.7.1"},appCapabilities:{}});
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);
  }catch(e){status(e.message);}

@@ -70,7 +70,7 @@ export async function queryRateLimits({command, args}, {accessToken, chatgptAcco
       child.stdin.write(JSON.stringify({jsonrpc:"2.0", method, params, id}) + "\n");
     };
     const lines = createInterface({input:child.stdout, crlfDelay:Infinity});
-    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.7.0"},
+    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.7.1"},
       capabilities:{experimentalApi:true}}, 1);
     for await (const line of lines) {
       let message;

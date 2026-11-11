@@ -31,14 +31,43 @@ function removePriorDesktopResults(state,current){
     if(!processAlive(Number(match[1])))fs.rmSync(path.join(state,name),{force:true});
   }
 }
+function startupSnapshot(file){
+  if(!file)return null;
+  const data=readSnapshot(file);
+  if(data?.status==="running" && Number.isInteger(data.pid) && !processAlive(data.pid))return {...data,status:"interrupted"};
+  return data;
+}
+
+export function createStartupClient({state,local,userProfile,codexHome}){
+  let file, task, launchedAt, launchFailed=false;
+  async function launch(){
+    const key=await desktopSession();
+    if(!key)return;
+    file=path.join(state,"startup-"+key+".json");
+    if(startupSnapshot(file))return;
+    const powershell=path.join(process.env.SystemRoot??"C:\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
+    const script=fileURLToPath(new URL("./scripts/Launch-StartupWorker.ps1",import.meta.url));
+    launchedAt=Date.now();
+    try{
+      const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-STA","-NonInteractive",
+        "-File",script,"-DesktopSession",key,"-Node",process.execPath,"-Local",local,
+        "-UserProfile",userProfile,"-CodexHome",codexHome],{timeout:5000,windowsHide:true});
+      launchFailed=stdout.trim()!=="explorer_accepted";
+    }catch{launchFailed=true;}
+  }
+  return {
+    start(){return task??=launch();},
+    snapshot(){
+      const data=startupSnapshot(file);
+      if(data||!launchedAt)return data;
+      const interrupted=launchFailed||Date.now()-launchedAt>7000;
+      return {status:interrupted?"interrupted":"running",probe:"pending",total:0,usage:{},errors:{}};
+    }
+  };
+}
 export function createStartup({state,identify=desktopSession,list,probe,query}){
   let file, task;
-  function snapshot(){
-    if(!file)return null;
-    const data=readSnapshot(file);
-    if(data?.status==="running" && Number.isInteger(data.pid) && !processAlive(data.pid))return {...data,status:"interrupted"};
-    return data;
-  }
+  function snapshot(){return startupSnapshot(file);}
   async function run(){
     const key=await identify();
     if(!key || !/^\d+-\d+$/.test(key))return;

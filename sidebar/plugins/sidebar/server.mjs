@@ -1,25 +1,14 @@
 import {readFileSync} from "node:fs";
 import path from "node:path";
-import {setTimeout as delay} from "node:timers/promises";
 import {createInterface} from "node:readline";
 import {createBackend} from "./backend.mjs";
-import {createStartup} from "./startup.mjs";
+import {createStartupClient} from "./startup.mjs";
 const backend=createBackend(),uri="ui://profile-dock/sidebar.html";
-const selfTest=createBackend({stateDir:path.join(backend.stateDir,"startup-probe")});
-const startup=createStartup({
+const startup=createStartupClient({
  state:backend.stateDir,
- list:()=>backend.list(),
- query:name=>backend.refreshUsage({name}),
- async probe(){
-  const {id}=await selfTest.probe();
-  const deadline=Date.now()+4000;
-  while(Date.now()<deadline){
-   const {operation,busy}=selfTest.list();
-   if(!busy)return operation?.id===id && operation.status==="probe_ok";
-   await delay(100);
-  }
-  return false;
- }
+ local:path.resolve(process.env.LOCALAPPDATA),
+ userProfile:path.resolve(process.env.USERPROFILE),
+ codexHome:path.resolve(process.env.CODEX_HOME||path.join(process.env.USERPROFILE,".codex"))
 });
 const manuallyRefreshed=new Set();
 function listProfiles(){
@@ -54,7 +43,7 @@ const tools=[
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.7.0"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.7.1"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{
@@ -83,7 +72,7 @@ const send=m=>process.stdout.write(JSON.stringify({jsonrpc:"2.0",...m})+"\n");
 for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
  let m;try{m=JSON.parse(line);}catch{send({id:null,error:{code:-32700,message:"Parse error"}});continue;}
  if(!m||m.jsonrpc!=="2.0"||typeof m.method!=="string")continue;
- if(m.method==="notifications/initialized"){void startup.start().catch(()=>{});continue;}
+ if(m.method==="notifications/initialized"){await startup.start().catch(()=>{});continue;}
  if(!Object.hasOwn(m,"id"))continue;
  try{send({id:m.id,result:await dispatch(m.method,m.params??{})});}catch{send({id:m.id,error:{code:-32601,message:"Unknown request"}});}
 }
