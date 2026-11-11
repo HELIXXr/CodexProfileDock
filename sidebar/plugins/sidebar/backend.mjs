@@ -5,9 +5,11 @@ import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 export const validName = n => typeof n==="string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(n);
 
-export function createBackend({local=process.env.LOCALAPPDATA, launch}={}) {
+export function createBackend({local=process.env.LOCALAPPDATA, codexHome=process.env.CODEX_HOME, launch, startupTimeoutMs=6000}={}) {
   if(!local) throw Error("Windows local data directory is unavailable");
+  local=path.resolve(local);
   const state=path.join(local,"CodexProfileDockSidebar");
+  const home=path.resolve(codexHome || path.join(process.env.USERPROFILE ?? local, ".codex"));
   const vault=fs.existsSync(path.join(local,"LocalCodexSwitch"))?path.join(local,"LocalCodexSwitch"):path.join(local,"CodexProfileDock");
   const pending=new Map();
   const lock=path.join(state,"operation.lock");
@@ -19,12 +21,12 @@ export function createBackend({local=process.env.LOCALAPPDATA, launch}={}) {
     const exe=path.join(process.env.SystemRoot??"C:\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
     const worker=fileURLToPath(new URL("./scripts/Sidebar-Worker.ps1",import.meta.url));
     const psQuote=s=>"'"+s.replaceAll("'","''")+"'";
-    const invocation="& "+psQuote(worker)+" -Action "+psQuote(args[1])+" -Name "+psQuote(args[3])+" -OperationId "+psQuote(args[5]);
+    const invocation="& "+psQuote(worker)+" -Action "+psQuote(args[1])+" -Name "+psQuote(args[3])+" -OperationId "+psQuote(args[5])+" -StateDir "+psQuote(state)+" -Vault "+psQuote(vault)+" -CodexHome "+psQuote(home);
     const commandLine='"'+exe+'" -NoProfile -STA -WindowStyle Hidden -EncodedCommand '+Buffer.from(invocation,"utf16le").toString("base64");
     // WMI brokers a new process outside the MCP server's process tree.
     const code="$ErrorActionPreference='Stop'; $r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="+psQuote(commandLine)+"}; if($r.ReturnValue -ne 0){exit 1}";
     const child=spawn(exe,["-NoProfile","-WindowStyle","Hidden","-Command",code],{stdio:"ignore",windowsHide:true});
-    const timer=setTimeout(()=>{child.kill();reject(Error("launch timeout"));},12000);
+    const timer=setTimeout(()=>{child.kill();reject(Error("launch timeout"));},6000);
     child.once("error",e=>{clearTimeout(timer);reject(e);});
     child.once("exit",exitCode=>{clearTimeout(timer);exitCode===0?resolve():reject(Error("launch failed"));});
   }));
@@ -50,14 +52,29 @@ export function createBackend({local=process.env.LOCALAPPDATA, launch}={}) {
         fs.writeFileSync(handle,id);fs.closeSync(handle);handle=undefined;
         fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"queued",updated:new Date().toISOString()}));
         await run(["-Action",intent.action,"-Name",intent.name,"-OperationId",id]);
+        const ready=path.join(state,id+".ready");
+        const deadline=Date.now()+startupTimeoutMs;
+        while(!fs.existsSync(ready) && fs.existsSync(lock) && Date.now()<deadline){
+          await new Promise(resolve=>setTimeout(resolve,100));
+        }
+        if(!fs.existsSync(ready) || fs.readFileSync(lock,"utf8")!==id)throw Error("worker did not acknowledge");
+        // The worker may not touch Codex until this single-use permit exists.
+        fs.writeFileSync(path.join(state,id+".go"),"go",{flag:"wx"});
       }catch{
         if(handle!==undefined)fs.closeSync(handle);
-        fs.rmSync(lock,{force:true});
-        fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"failed",updated:new Date().toISOString()}));
-        throw Error("未能启动后台流程，账号未改变。");
+        let ownLock=false;
+        try{ownLock=fs.readFileSync(lock,"utf8")===id;}catch{}
+        if(ownLock){
+          fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"failed",reason:"startup",updated:new Date().toISOString()}));
+          fs.rmSync(lock,{force:true});
+        }
+        fs.rmSync(path.join(state,id+".ready"),{force:true});
+
+        throw Error("后台未确认启动，已取消本次操作。账号未改变，可以重试。");
       }
       return {id,status:"queued"};
     }
   };
 }
+
 

@@ -2,7 +2,7 @@ import {createBackend,validName} from "./backend.mjs";import fs from "node:fs";i
 const local=fs.mkdtempSync(path.join(os.tmpdir(),"dock-test-"));
 try{
 const vault=path.join(local,"CodexProfileDock");fs.mkdirSync(vault);fs.writeFileSync(path.join(vault,"Personal.dpapi"),"fixture");fs.writeFileSync(path.join(vault,"Work.dpapi"),"fixture");fs.writeFileSync(path.join(vault,"auth.json"),"MUST_NOT_READ");
-const calls=[];const b=createBackend({local,launch:async args=>calls.push(args)});
+const calls=[];const b=createBackend({local,launch:async args=>{calls.push(args);fs.writeFileSync(path.join(local,"CodexProfileDockSidebar",args[5]+".ready"),"ready");}});
 assert.deepEqual(b.list().profiles,["Personal","Work"]);
 for(const name of ["","../x","中文","x".repeat(33)])assert.equal(validName(name),false);
 assert.throws(()=>b.prepare({action:"Switch",name:"Unknown"}));
@@ -20,4 +20,5 @@ assert.equal(c.list().busy,false);assert.equal(c.list().operation.status,"failed
 assert.equal(fs.readFileSync(path.join(vault,"auth.json"),"utf8"),"MUST_NOT_READ");
 console.log("PASS profiles, confirmation tickets, replay, invalid input, lock, launch failure, unchanged auth fixture");
 }finally{fs.rmSync(local,{recursive:true,force:true});}
+
 

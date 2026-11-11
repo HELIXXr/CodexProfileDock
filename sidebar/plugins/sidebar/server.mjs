@@ -16,7 +16,7 @@ const tools=[
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.2.0"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.2.1"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{
