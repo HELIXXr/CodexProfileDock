@@ -1,24 +1,54 @@
-# Codex Profile Dock
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="sidebar/plugins/sidebar/assets/profile-dock-dark.png">
+    <img src="sidebar/plugins/sidebar/assets/profile-dock-light.png" alt="Profile Dock" width="68">
+  </picture>
+</p>
 
-Windows 10/11 上的独立 Codex 账号切换工具。脚本在本机运行，不联网，不收集账号密码。无需安装插件或额外运行时即可双击启动。
+<h1 align="center">Codex Profile Dock</h1>
 
-## 使用
+<p align="center">从 Codex 侧栏切换 ChatGPT 账号，查看剩余额度和重置时间。</p>
+<p align="center">
+  <a href="https://github.com/HELIXXr/CodexProfileDock/releases/latest"><strong>下载 Windows 安装包</strong></a>
+  · <a href="README.en.md">English</a>
+  · <a href="#安装">安装指南</a>
+</p>
 
-1. 下载并完整解压 ZIP，双击 Open-CodexProfileDock.cmd。
-2. 在 Codex 正常登录第一个账号，保存好工作并完全退出 Codex，在切换器中输入别名（如 Personal），点「保存当前账号」。
-3. 打开 Codex，用正常登录流程换到第二个账号。完全退出后，用另一个别名（如 Work）保存。
-4. 日常切换：先保存工作并等待任务完成，选择目标账号，点「切换并重开 Codex」并确认。识别到 Microsoft Store 版 Codex 后，工具会在需要时先恢复托盘窗口，然后用 Ctrl+Q 请求应用退出。确认退出后再切换并请求重开。打开后请核对账号。
+<p align="center">
+  <img src="docs/sidebar-zh-CN.png" alt="Profile Dock 中文侧栏，展示模拟账号的额度、重置时间和切换按钮" width="540">
+  <br><sub>截图中的账号与额度均为示例。</sub>
+</p>
 
-如果无法恢复托盘窗口、无法发送退出快捷键，或 Codex/CLI 进程没有退出，工具会停止，不强制结束进程。请手动完全退出后重试。非 Microsoft Store 版本请手动退出，切换后手动重开。保存当前账号仍要求先完全退出 Codex。
+## 功能
 
-## 凭据和兼容性
+| 操作 | 说明 |
+| --- | --- |
+| **保存与切换** | 给当前登录保存一个别名。确认切换后，插件会请求 Codex 正常退出，更新本机登录状态，再重开 Codex。 |
+| **查看额度** | 查看各账号的剩余百分比和重置时间。账号旁的圆环显示各额度窗口中最低的剩余百分比。 |
+| **重命名与界面语言** | 在侧栏重命名已保存的账号。Codex 使用中文时显示简体中文，其余语言显示英文。 |
 
-只支持 Codex 使用 auth.json 文件保存的 ChatGPT 登录；不适用于系统凭据库或 API Key 登录。若账号凭据失效，需要正常登录后重新保存。切换时只替换本机的活动登录缓存，不迁移或隔离聊天数据。
+## 安装
 
-保存的账号记录由 Windows DPAPI 加密，位于 %LOCALAPPDATA%\CodexProfileDock。若本机已有旧版 LocalCodexSwitch 目录，会继续使用它。备份通常只能由同一台电脑上的同一 Windows 用户解密，不适合用来迁移账号。活动 auth.json 由 Codex 读取，仍包含敏感登录令牌。不要分享 auth.json、.dpapi 文件或私人备份。此项目为非官方工具。
+需要 Windows 上的 **Microsoft Store 版 Codex 桌面应用**、**Codex CLI** 和 **Node.js 22 或更高版本**。
 
-## 可选：从 Codex 启动
+1. 安装并打开一次 Codex 桌面应用。安装 [Node.js](https://nodejs.org/en/download)，在新终端运行 `node --version` 和 `codex --version`。如果找不到 `codex`，运行 `npm install -g @openai/codex` 后重开终端。
+2. 从 [GitHub Releases](https://github.com/HELIXXr/CodexProfileDock/releases/latest) 下载 `Codex-Profile-Dock-Windows-*.zip`，完整解压到准备保留的文件夹。
+3. 双击 `Install-Profile-Dock.cmd`。保存工作，完全退出并重开 Codex，再从侧栏打开 **Profile Dock**。可用「测试后台」检查安装。
 
-在解压目录中运行 codex plugin marketplace add .，再到桌面应用的插件目录选择 Codex Profile Dock (Local)，安装 Codex Profile Dock。启用后可以对 Codex 说「用 helix-codex-profile-dock 打开切换器」。插件只负责打开窗口；保存和切换在独立窗口中手动操作。无法安装插件时，可以直接双击启动文件。
+升级时运行新版安装脚本即可。卸载时双击 `Uninstall-Profile-Dock.cmd`，然后重开 Codex。已保存的账号记录保留在本机。
 
-英文简述：An unofficial, offline Windows utility for switching locally saved Codex ChatGPT profiles. Extract the full archive and run Open-CodexProfileDock.cmd. Quit Codex before saving or switching. Never share authentication files or encrypted profile backups.
+## 保存和切换账号
+
+1. 在 Codex 正常登录第一个账号。在 Profile Dock 输入别名，例如 `Personal`，点击「保存账号」并确认。
+2. 在 Codex 正常登录第二个账号，用另一个别名，例如 `Work`，保存一次。
+3. 切换前先保存工作，等待运行中的任务结束。在目标账号旁点击「切换」并确认。Codex 重开后核对当前账号。用「刷新」查询最新额度。
+
+## 兼容性和账号数据
+
+- 支持 Codex 将 ChatGPT 登录保存到 `auth.json` 的方式。使用系统凭据库或 API Key 登录时无法保存账号。聊天数据由 Codex 管理。
+- 账号记录使用 Windows DPAPI 加密，存放在 `%LOCALAPPDATA%\CodexProfileDock`，或沿用旧版 `LocalCodexSwitch` 目录。请妥善保管 `auth.json`、`.dpapi` 文件和私人备份。
+- 额度由 Codex App Server 向 OpenAI 查询。侧栏只接收额度数据。
+
+[完整安装与故障排查](sidebar/README.md) · [旧版独立窗口说明](docs/standalone.zh-CN.md)
+
+<sub>非官方项目，与 OpenAI 无隶属关系。</sub>
