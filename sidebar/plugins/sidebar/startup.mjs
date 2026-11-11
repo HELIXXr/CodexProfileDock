@@ -89,6 +89,7 @@ export function createStartup({state,identify=desktopSession,list,probe,query}){
       const current=list();
       if(current.busy){data.status="skipped";return;}
       data.total=current.profiles.length;
+      data.profileRefs=current.profileRefs??{};
       try{data.probe=await probe()?"passed":"failed";}
       catch{data.probe="failed";}
       publish();

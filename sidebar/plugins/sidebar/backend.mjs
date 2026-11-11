@@ -1,4 +1,5 @@
 import {spawn} from "node:child_process";
+import {setTimeout as delay} from "node:timers/promises";
 import {fileURLToPath} from "node:url";
 import fs from "node:fs";
 import path from "node:path";
@@ -23,6 +24,12 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   function profiles(){
     try { return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
     catch(e){if(e.code==="ENOENT")return [];throw Error("无法读取账号别名。");}
+  }
+  function profileRef(name){
+    try{
+      const file=fs.statSync(path.join(vault,name+".dpapi"),{bigint:true});
+      return file.isFile()?`${file.dev}:${file.ino}:${file.birthtimeNs}`:null;
+    }catch{return null;}
   }
   const home=path.resolve(codexHome || path.join(process.env.USERPROFILE ?? local, ".codex"));
   const run=launch??(args=>new Promise((resolve,reject)=>{
@@ -68,21 +75,59 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
     list(){
       const operation=inspectOperation();
       const names=profiles();
-      return {profiles:names,busy:fs.existsSync(lock),operation,
-        usage:Object.fromEntries(names.filter(name=>usage.has(name)).map(name=>[name,usage.get(name)]))};
+      const profileRefs=Object.fromEntries(names.map(name=>[name,profileRef(name)]));
+      return {profiles:names,busy:fs.existsSync(lock),operation,profileRefs,
+        usage:Object.fromEntries(names.filter(name=>usage.has(profileRefs[name])).map(name=>[name,usage.get(profileRefs[name])]))};
     },
     async refreshUsage({name}={}){
       if(!validName(name)||!profiles().includes(name))throw Error("usage_profile_missing");
       if(fs.existsSync(lock))throw Error("usage_busy");
+      const ref=profileRef(name);
+      if(!ref)throw Error("usage_profile_missing");
       try{
         const windows=await readProfileUsage({name,vault,codexHome:home,state});
         const snapshot={windows,checkedAt:new Date().toISOString()};
-        usage.set(name,snapshot);
+        if(profileRef(name)!==ref)throw Error("usage_profile_missing");
+        usage.set(ref,snapshot);
         return snapshot;
       }catch(error){
-        throw Error(/^usage_(auth_unavailable|cli_unavailable|expired|no_windows|timeout|unavailable)$/.test(error.message)
+        throw Error(/^usage_(auth_unavailable|cli_unavailable|expired|no_windows|timeout|unavailable|profile_missing)$/.test(error.message)
           ? error.message : "usage_unavailable");
       }
+    },
+    async renameProfile({name,newName}={}){
+      if(!validName(name)||!validName(newName)||/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(newName)){
+        throw Error("请输入 1–32 位字母、数字、短横线或下划线，以字母或数字开头，并避开 Windows 保留名称。");
+      }
+      const names=profiles();
+      if(!names.includes(name))throw Error("所选账号不存在，请刷新列表。");
+      if(name===newName)return {name:newName};
+      if(names.some(other=>other!==name&&other.toLowerCase()===newName.toLowerCase())){
+        throw Error("此别名已被其他账号使用。");
+      }
+      const ticket=randomUUID();
+      pending.set(ticket,{action:"Rename",name,newName,expires:Date.now()+120000});
+      const {id}=await this.start({ticket});
+      const receipt=path.join(state,id+".rename-result");
+      const deadline=Date.now()+5000;
+      try{
+        while(Date.now()<deadline){
+          let result;
+          try{result=JSON.parse(fs.readFileSync(receipt,"utf8"));}catch{}
+          if(result?.id===id){
+            if(result.status==="renamed")return {name:newName};
+            const messages={
+              rename_exists:"此别名已被其他账号使用。",
+              rename_missing:"所选账号不存在，请刷新列表。",
+              rename_busy:"账号记录正在使用，请稍后再试。",
+              rename_invalid:"这个别名不能用作 Windows 文件名。"
+            };
+            throw Error(messages[result.reason]??"无法重命名账号，请刷新列表后重试。");
+          }
+          await delay(100);
+        }
+        throw Error("未收到重命名回执，请刷新列表核对。");
+      }finally{fs.rmSync(receipt,{force:true});}
     },
     prepare({action,name}={}){
       if(!["Save","Switch"].includes(action)||!validName(name))throw Error("请输入 1–32 位英文、数字、短横线或下划线别名，并以字母或数字开头。");
@@ -106,8 +151,11 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       const id=randomUUID();
       try{
         fs.writeFileSync(handle,id);fs.closeSync(handle);handle=undefined;
+        if(intent.action==="Switch"&&!profiles().includes(intent.name))throw Error("profile_missing");
         fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"queued",kind:intent.action,updated:new Date().toISOString()}));
-        await run(["-Action",intent.action,"-Name",intent.name,"-OperationId",id]);
+        const args=["-Action",intent.action,"-Name",intent.name,"-OperationId",id];
+        if(intent.action==="Rename")args.push("-NewName",intent.newName);
+        await run(args);
         const ready=path.join(state,id+".ready");
         const deadline=Date.now()+startupTimeoutMs;
         while(!fs.existsSync(ready) && fs.existsSync(lock) && Date.now()<deadline){
@@ -117,7 +165,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
         // The worker may not touch Codex until this single-use permit exists.
         fs.writeFileSync(path.join(state,id+".go"),"go",{flag:"wx"});
       }catch(error){
-        let reason=/^(?:explorer_(?:timeout|spawn|unavailable)|worker_no_ready)$/i.test(error.message)?error.message:"startup";
+        let reason=/^(?:explorer_(?:timeout|spawn|unavailable)|worker_no_ready|profile_missing)$/i.test(error.message)?error.message:"startup";
         try{
           const result=JSON.parse(fs.readFileSync(path.join(state,"latest.json"),"utf8"));
           if(result.id===id && /^worker_(?:forms|script|permit)$/.test(result.reason))reason=result.reason;
@@ -133,6 +181,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
           fs.rmSync(path.join(state,id+suffix),{force:true});
         }
 
+        if(reason==="profile_missing")throw Error("所选账号已不存在。");
         throw Error("后台未确认启动，已取消本次操作。账号未改变。诊断代码："+reason);
       }
       return {id,status:"queued"};

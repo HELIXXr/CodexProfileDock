@@ -1,8 +1,9 @@
-﻿# Launch exactly one worker through the existing desktop Explorer process.
+# Launch exactly one worker through the existing desktop Explorer process.
 param(
- [Parameter(Mandatory)][ValidateSet('Save','Switch','Probe')][string]$Action,
+ [Parameter(Mandatory)][ValidateSet('Save','Switch','Probe','Rename')][string]$Action,
  [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
  [Parameter(Mandatory)][ValidatePattern('^[a-f0-9-]{36}\z')][string]$OperationId,
+ [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$NewName,
  [Parameter(Mandatory)][string]$StateDir,
  [Parameter(Mandatory)][string]$Vault,
  [Parameter(Mandatory)][string]$CodexHome
@@ -17,6 +18,7 @@ $exe=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $arguments='-NoProfile -STA -NonInteractive -WindowStyle Hidden -File '+(Quote-Argument $worker)+
  ' -Action '+(Quote-Argument $Action)+' -Name '+(Quote-Argument $Name)+' -OperationId '+(Quote-Argument $OperationId)+
  ' -StateDir '+(Quote-Argument $StateDir)+' -Vault '+(Quote-Argument $Vault)+' -CodexHome '+(Quote-Argument $CodexHome)
+$arguments += if($Action -eq 'Rename'){' -NewName '+(Quote-Argument $NewName)}else{''}
 try {
  $windows=(New-Object -ComObject Shell.Application).Windows()
  $loc=0; $root=0; $hwnd=0

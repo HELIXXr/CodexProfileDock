@@ -1,7 +1,8 @@
-﻿param(
- [Parameter(Mandatory)][ValidateSet('Save','Switch','Probe')][string]$Action,
+param(
+ [Parameter(Mandatory)][ValidateSet('Save','Switch','Probe','Rename')][string]$Action,
  [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
  [Parameter(Mandatory)][ValidatePattern('^[a-f0-9-]{36}\z')][string]$OperationId,
+ [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$NewName,
  [Parameter(Mandatory)][string]$StateDir,
  [Parameter(Mandatory)][string]$Vault,
  [Parameter(Mandatory)][string]$CodexHome
@@ -20,6 +21,10 @@ function Write-State($status,$reason) {
  [IO.File]::WriteAllText($temp,$data,[Text.UTF8Encoding]::new($false))
  $target=Join-Path $StateDir 'latest.json'
  if([IO.File]::Exists($target)){[IO.File]::Replace($temp,$target,[NullString]::Value)}else{[IO.File]::Move($temp,$target)}
+ if($checkpoint -eq 'rename' -and $status -ne 'running'){
+   $receipt=Join-Path $StateDir ($OperationId+'.rename-result')
+   [IO.File]::WriteAllText($receipt,$data,[Text.UTF8Encoding]::new($false))
+ }
 }
 if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace 'worker_entered' }
 if(!(Test-OwnLock)){
@@ -45,6 +50,14 @@ try {
  }
  if(!(Test-OwnLock)){return}
  if($Action -eq 'Probe'){Write-State 'probe_ok';return}
+ if($Action -eq 'Rename'){
+   $phase='rename_error'
+   $checkpoint='rename'
+   Write-State 'running'
+   $result=& (Join-Path $PSScriptRoot 'Switch-Codex.ps1') -Action Rename -Name $Name -NewName $NewName -Vault $Vault -CodexHome $CodexHome
+   if($result -eq 'rename_ok'){Write-State 'renamed'}else{Write-State 'failed' $result}
+   return
+ }
  $phase='operation'
  $checkpoint='wait_for_exit'
  Write-State 'running'

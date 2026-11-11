@@ -10,14 +10,17 @@ const startup=createStartupClient({
  userProfile:path.resolve(process.env.USERPROFILE),
  codexHome:path.resolve(process.env.CODEX_HOME||path.join(process.env.USERPROFILE,".codex"))
 });
-const manuallyRefreshed=new Set();
+
 function listProfiles(){
- const panel=backend.list(), auto=startup.snapshot();
+ const {profileRefs,...panel}=backend.list(), auto=startup.snapshot();
  if(!auto)return panel;
+ const priorNames=new Map(Object.entries(auto.profileRefs??{}).filter(([,ref])=>ref).map(([name,ref])=>[ref,name]));
  const usage={}, errors={};
  for(const name of panel.profiles){
-  if(Object.hasOwn(auto.usage,name))usage[name]=auto.usage[name];
-  if(Object.hasOwn(auto.errors,name)&&!manuallyRefreshed.has(name))errors[name]=auto.errors[name];
+  const previous=priorNames.get(profileRefs[name]);
+  if(previous===undefined)continue;
+  if(Object.hasOwn(auto.usage,previous))usage[name]=auto.usage[previous];
+  if(Object.hasOwn(auto.errors,previous)&&!Object.hasOwn(panel.usage,name))errors[name]=auto.errors[previous];
  }
  return {...panel,usage:{...usage,...panel.usage},usageErrors:errors,
   busy:panel.busy||auto.status==="running",
@@ -35,28 +38,26 @@ const tools=[
  ...[
  ["list_profiles",schema,true],
  ["probe_worker",schema,false],
+ ["rename_profile",{type:"object",properties:{name:{type:"string"},newName:{type:"string"}},required:["name","newName"],additionalProperties:false},false],
  ["refresh_usage",{type:"object",properties:{name:{type:"string"}},required:["name"],additionalProperties:false},true,true],
  ["prepare_operation",{type:"object",properties:{action:{enum:["Save","Switch"]},name:{type:"string"}},required:["action","name"],additionalProperties:false},true],
  ["start_operation",{type:"object",properties:{ticket:{type:"string"}},required:["ticket"],additionalProperties:false},false]
- ].map(([name,inputSchema,readOnlyHint,openWorldHint=false])=>({name,inputSchema,description:"Profile Dock panel action.",annotations:{readOnlyHint,destructiveHint:!readOnlyHint,openWorldHint},_meta:{ui:{visibility:["app"]}}}))
+ ].map(([name,inputSchema,readOnlyHint,openWorldHint=false])=>({name,inputSchema,description:"Profile Dock panel action.",annotations:{readOnlyHint,destructiveHint:!readOnlyHint&&name!=="rename_profile",openWorldHint},_meta:{ui:{visibility:["app"]}}}))
 ];
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.7.1"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.8.0"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{
   if(p.name==="open_sidebar_preview")return result({});
   if(p.name==="list_profiles")return result(listProfiles());
-  if(startup.snapshot()?.status==="running" && ["refresh_usage","probe_worker","prepare_operation","start_operation"].includes(p.name)){
+  if(startup.snapshot()?.status==="running" && ["refresh_usage","probe_worker","prepare_operation","start_operation","rename_profile"].includes(p.name)){
    throw Error(p.name==="refresh_usage"?"usage_busy":"正在运行启动自检和额度刷新，请稍候。");
   }
-  if(p.name==="refresh_usage"){
-   const snapshot=await backend.refreshUsage(p.arguments);
-   manuallyRefreshed.add(p.arguments.name);
-   return result(snapshot);
-  }
+  if(p.name==="refresh_usage")return result(await backend.refreshUsage(p.arguments));
+  if(p.name==="rename_profile")return result(await backend.renameProfile(p.arguments));
   if(p.name==="probe_worker")return result(await backend.probe());
   if(p.name==="prepare_operation")return result(backend.prepare(p.arguments));
   if(p.name==="start_operation")return result(await backend.start(p.arguments));

@@ -8,6 +8,7 @@ section{margin-top:16px;padding:20px;border:1px solid var(--line);background:var
 small,p.note{color:var(--muted)}button,input{font:inherit;border-radius:8px;padding:10px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.account-actions{display:flex;flex-wrap:wrap;gap:8px}
 .account-label{display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere}
 .quota{display:inline-flex;align-items:center;gap:5px;flex:none;width:calc(21px + 6ch);color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap}
 .quota[data-state=good]{--quota-color:#178451}.quota[data-state=medium]{--quota-color:#a96613}.quota[data-state=low]{--quota-color:#c14649}
@@ -19,22 +20,31 @@ button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-vis
 .usage{flex-basis:100%;margin:0;color:var(--muted);font-size:.875rem;white-space:pre-line;overflow-wrap:anywhere}
 .primary{background:#4946ac;color:white;border-color:#4946ac}.form{display:flex;gap:10px;flex-wrap:wrap}input{min-width:150px;flex:1}#status,#startup{margin:10px 0 0;color:#e2e4ff;font-size:.875rem;white-space:pre-line;overflow-wrap:anywhere}.error{color:var(--accent)}
 #startup{margin-top:4px;color:#d4d6ff}
+#rename-error{margin:8px 0 0;color:var(--accent);overflow-wrap:anywhere}#rename-error:empty{display:none}
 #confirm{border:2px solid var(--accent)}#confirm p{overflow-wrap:anywhere}.actions{display:flex;gap:10px;margin-top:16px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
 </style><main>
 <header><p class="eyebrow">PROFILE DOCK / LOCAL</p><h1>Codex 账号切换</h1>
 <p id="status" role="status" aria-live="polite">正在连接…</p>
 <p id="startup" role="status" hidden></p></header>
 <section><div class="top"><h2>已保存账号</h2><div class="actions" style="margin-top:0"><button id="probe" disabled>测试后台</button><button id="refresh" disabled>刷新</button></div></div><div id="profiles">正在连接本机服务…</div></section>
+<section id="rename" hidden aria-labelledby="renameTitle">
+<h2 id="renameTitle">重命名账号</h2>
+<form id="rename-form" novalidate>
+<label for="rename-alias">新别名</label>
+<div class="form"><input id="rename-alias" maxlength="32" autocomplete="off" spellcheck="false"></div>
+<p id="rename-error" role="alert"></p>
+<div class="actions"><button type="submit" id="rename-save" class="primary">保存别名</button><button type="button" id="rename-cancel">取消</button></div>
+</form></section>
 <section id="confirm" hidden aria-labelledby="confirmTitle"><h2 id="confirmTitle">确认操作</h2><p id="question"></p>
 <p>请先保存工作，等待其他任务完成。Codex 会退出并自动重开，当前面板会关闭。</p><div class="actions"><button id="yes" class="primary">确认并继续</button><button id="no">取消</button></div></section>
 <section><h2>保存当前账号</h2><label for="alias">本地别名（例如 Personal）</label><div class="form"><input id="alias" maxlength="32" autocomplete="off"><button id="save" disabled>保存账号</button></div>
 <p class="note">保存也会退出并重开 Codex，以便保存最新登录状态。</p></section>
 <p class="note">登录令牌保存在本机加密文件中，不会发送给聊天模型。操作后请核对 Codex 当前账号。</p>
 </main><script>
-const $=s=>document.getElementById(s),pending=new Map();let seq=0,connected=false,busy=false,proposal=null,poll=null,refreshing=null,usageLoading=false;
-function request(method,params={}){
+const $=s=>document.getElementById(s),pending=new Map();let seq=0,connected=false,busy=false,proposal=null,poll=null,refreshing=null,usageLoading=false,renaming=null,renameBusy=false;
+function request(method,params={},timeoutMs=15000){
  return new Promise((resolve,reject)=>{
-  const id="dock-"+(++seq),timeout=setTimeout(()=>{pending.delete(id);reject(Error("服务响应超时，请刷新面板。"));},15000);
+  const id="dock-"+(++seq),timeout=setTimeout(()=>{pending.delete(id);reject(Error("服务响应超时，请刷新面板。"));},timeoutMs);
   pending.set(id,{resolve,reject,timeout});parent.postMessage({jsonrpc:"2.0",id,method,params},"*");
  });
 }
@@ -46,13 +56,15 @@ window.addEventListener("message",event=>{
 function status(text){$("status").textContent=text;}
 const usageErrors=new Map();
 function controls(){
- const locked=busy||!!proposal||usageLoading;
+ const locked=busy||!!proposal||usageLoading||renaming!==null||renameBusy;
  $("probe").disabled=!connected||locked;
  $("refresh").disabled=!connected||locked;$("save").disabled=!connected||locked;
- $("alias").disabled=locked;document.querySelectorAll("[data-switch]").forEach(b=>b.disabled=locked);
+ $("alias").disabled=locked;document.querySelectorAll("[data-switch],[data-rename]").forEach(b=>b.disabled=locked);
+ $("rename-alias").disabled=renameBusy;$("rename-cancel").disabled=renameBusy;
+ $("rename-save").disabled=renameBusy||!renaming||$("rename-alias").value.trim()===renaming;
 }
 async function tool(name,args={}){
- const r=await request("tools/call",{name,arguments:args});
+ const r=await request("tools/call",{name,arguments:args},name==="rename_profile"?22000:15000);
  if(r.isError)throw Error(r.content?.find(c=>c.type==="text")?.text??"操作失败");
  return r._meta?.panel??{};
 }
@@ -103,12 +115,12 @@ function quotaBadge(snapshot){
  return badge;
 }
 function refresh(){
- if(proposal)return;
+ if(proposal||renaming)return;
  refreshing??=loadProfiles().finally(()=>{refreshing=null;});
  return refreshing;
 }
 async function refreshAllUsage(){
- if(!connected||busy||proposal||usageLoading)return;
+ if(!connected||busy||proposal||usageLoading||renaming||renameBusy)return;
  usageLoading=true;controls();
  try{
   const data=await refresh();
@@ -153,15 +165,20 @@ async function loadProfiles(){
    const identity=document.createElement("div");identity.className="account-label";identity.append(quotaBadge(snapshot),label);
    const button=document.createElement("button");button.textContent="切换";button.dataset.switch="";
    button.setAttribute("aria-label","切换到 "+name);button.onclick=()=>prepare("Switch",name);
+   const actions=document.createElement("div");actions.className="account-actions";
+   const rename=document.createElement("button");rename.textContent="重命名";rename.dataset.rename=name;
+   rename.setAttribute("aria-label","重命名 "+name);rename.onclick=()=>openRename(name);
+   actions.append(rename,button);
    const summary=document.createElement("p");summary.className="usage";summary.dataset.usageSummary=name;summary.setAttribute("role","status");
    const error=usageErrors.get(name)??(Object.hasOwn(data.usageErrors??{},name)?usageMessages[data.usageErrors[name]]??"暂时无法查询额度，请重试。":null);
    summary.textContent=usageText(snapshot,error);summary.hidden=!summary.textContent;
-   row.append(identity,button,summary);$("profiles").append(row);
+   row.append(identity,actions,summary);$("profiles").append(row);
   }
   if(!data.profiles?.length)$("profiles").textContent="还没有保存的账号。";
   const statuses={queued:"正在确认本机后台启动…",running:"正在退出并处理账号，Codex 会暂时关闭。",requested:"上次账号操作已完成，并已请求重开 Codex。请核对当前账号。",manual:"账号操作已完成，请手动打开 Codex 并核对账号。",failed:"上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。",interrupted:"上次操作被中断。未自动重试，请先核对当前账号。"};
   const op=data.operation;
-  if(op?.status==="probe_ok")status("后台自检通过。没有退出 Codex，也没有改动账号。");
+  if(op?.kind==="Rename")status({queued:"正在启动重命名…",running:"正在保存新别名…",renamed:"账号已重命名。",failed:"上次重命名未完成。",interrupted:"上次重命名已中断，请刷新列表核对。"}[op.status]??"请核对账号别名。");
+  else if(op?.status==="probe_ok")status("后台自检通过。没有退出 Codex，也没有改动账号。");
   else if(op?.status==="failed" && op.reason!=="operation")status("后台启动未完成，账号未改变。诊断代码："+(op.reason||"startup"));
   else status(op ? statuses[op.status]??"请核对账号。" : "请选择账号，或保存当前登录。");
   controls();
@@ -169,17 +186,53 @@ async function loadProfiles(){
  }catch(e){status(e.message);}
 }
 async function prepare(action,name){
- if(busy||proposal||usageLoading)return;
+ if(busy||proposal||usageLoading||renaming||renameBusy)return;
  try{
   proposal=await tool("prepare_operation",{action,name:name.trim()});
   $("question").textContent=action==="Switch"?"切换到「"+proposal.name+"」？":"将当前登录保存为「"+proposal.name+"」？";
   $("confirm").hidden=false;controls();$("no").focus();
  }catch(e){proposal=null;status(e.message);controls();}
 }
+function focusRenameButton(name){
+ Array.from(document.querySelectorAll("[data-rename]")).find(button=>button.dataset.rename===name)?.focus();
+}
+function openRename(name){
+ if(busy||proposal||usageLoading||renaming||renameBusy)return;
+ renaming=name;$("renameTitle").textContent="重命名「"+name+"」";
+ $("rename-alias").value=name;$("rename-error").textContent="";$("rename").hidden=false;
+ controls();$("rename-alias").focus();$("rename-alias").select();
+}
+function closeRename(){
+ const previous=renaming;
+ renaming=null;$("rename").hidden=true;controls();
+ return previous;
+}
+$("rename-alias").oninput=controls;
+$("rename-cancel").onclick=()=>{if(!renameBusy)focusRenameButton(closeRename());};
+$("rename-form").onkeydown=event=>{
+ if(event.key==="Escape"&&!renameBusy){event.preventDefault();focusRenameButton(closeRename());}
+};
+$("rename-form").onsubmit=async event=>{
+ event.preventDefault();
+ if(!renaming||renameBusy)return;
+ const name=renaming,newName=$("rename-alias").value.trim();
+ if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$/.test(newName)){
+  $("rename-error").textContent="请输入 1–32 位英文、数字、短横线或下划线，以字母或数字开头。";
+  return;
+ }
+ if(name===newName)return;
+ renameBusy=true;$("rename-error").textContent="";controls();
+ try{
+  await tool("rename_profile",{name,newName});
+  usageErrors.delete(name);usageErrors.delete(newName);closeRename();
+  await refresh();focusRenameButton(newName);
+ }catch(error){$("rename-error").textContent=error.message;}
+ finally{renameBusy=false;controls();}
+};
 $("save").onclick=()=>prepare("Save",$("alias").value);
 $("refresh").onclick=refreshAllUsage;
 $("probe").onclick=async()=>{
- if(busy||proposal||usageLoading)return;
+ if(busy||proposal||usageLoading||renaming||renameBusy)return;
  busy=true;controls();status("正在测试后台启动，不会退出 Codex 或改动账号…");
  try {await tool("probe_worker");await refresh();}
  catch(e){busy=false;controls();status(e.message);}
@@ -196,7 +249,7 @@ $("yes").onclick=async()=>{
 };
 (async()=>{
  try{
-  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.7.1"},appCapabilities:{}});
+  await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.8.0"},appCapabilities:{}});
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);
  }catch(e){status(e.message);}

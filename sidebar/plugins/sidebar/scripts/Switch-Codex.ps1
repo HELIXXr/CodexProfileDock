@@ -1,8 +1,9 @@
 # Windows PowerShell 5.1
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Save','Switch','List','ReadUsageAuth')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Save','Switch','List','ReadUsageAuth','Rename')][string]$Action,
     [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
+    [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$NewName,
     [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }),
     [string]$Vault = $(if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch') -PathType Container) {
         Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch' # Preserve existing saved profiles.
@@ -69,6 +70,26 @@ if ($Action -eq 'List') {
     return
 }
 if (!$Name) { throw 'Supply -Name, for example Personal or Work.' }
+if ($Action -eq 'Rename') {
+    if (!$NewName -or $NewName -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$') { 'rename_invalid'; return }
+    if (!(Test-Path -LiteralPath $Vault -PathType Container)) { 'rename_missing'; return }
+    try { $renameLock = [IO.File]::Open((Join-Path $Vault '.lock'), 'OpenOrCreate', 'ReadWrite', 'None') }
+    catch [IO.IOException] { 'rename_busy'; return }
+    try {
+        $files = @(Get-ChildItem -LiteralPath $Vault -Filter '*.dpapi' -File)
+        $source = $files | Where-Object { $_.Name -ceq ($Name + '.dpapi') } | Select-Object -First 1
+        if (!$source -or ($source.Attributes -band [IO.FileAttributes]::ReparsePoint)) { 'rename_missing'; return }
+        if ($Name -ceq $NewName) { 'rename_ok'; return }
+        $target = $NewName + '.dpapi'
+        if ($files | Where-Object { $_.Name -cne $source.Name -and $_.Name -ieq $target }) {
+            'rename_exists'
+            return
+        }
+        [IO.File]::Move($source.FullName, (Join-Path $Vault $target))
+        'rename_ok'
+    } finally { $renameLock.Dispose() }
+    return
+}
 if ($Action -eq 'ReadUsageAuth') {
     $saved = Read-Profile (Join-Path $Vault ($Name + '.dpapi'))
     $identity = Get-Identity $saved
