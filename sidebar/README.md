@@ -8,7 +8,11 @@
 
 ## 安装或升级
 
-1. 安装并打开一次 Microsoft Store 版 Codex 桌面应用。安装 [Node.js](https://nodejs.org/en/download) 22 或更高版本，确保新开的终端能运行 `node --version`。
+需要 **Windows 上的官方 Codex 桌面应用**（已并入 ChatGPT 桌面应用）、**Codex CLI** 和 **Node.js 22 或更高版本**。
+
+已验证 **x64 Microsoft Store 安装**。通过官方网页安装器、`winget` 或离线 MSIX 安装时，只要 Windows 注册了 `OpenAI.Codex` 应用包，且开始菜单入口可用，按现有检测逻辑应可使用。离线 MSIX 和 Arm64 尚未完成端到端验证。CLI 和 IDE 扩展不能作为侧栏宿主。[OpenAI Windows 部署指南](https://learn.chatgpt.com/docs/enterprise/windows-deployment)
+
+1. 安装并打开一次 Codex 桌面应用。安装 [Node.js](https://nodejs.org/en/download) 22 或更高版本，确保新开的终端能运行 `node --version`。
 2. 如果终端找不到 `codex`，运行 `npm install -g @openai/codex` 安装官方 CLI，再打开新终端检查 `codex --version`。已用 Codex CLI 0.155.1 和 Node.js 24 验证安装流程。
 3. 将 ZIP **完整解压**到本机一个准备保留的文件夹。双击 `Install-Profile-Dock.cmd`，按提示操作。已有试装版的用户直接运行新版安装脚本即可升级。
 4. 保存工作后，完全退出并重开 Codex，在侧栏打开 **Profile Dock**。首次打开可点「测试后台」确认插件能启动后台任务。

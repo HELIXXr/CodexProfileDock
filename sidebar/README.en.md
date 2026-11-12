@@ -8,7 +8,11 @@ The panel follows the Codex interface language. It uses Simplified Chinese for a
 
 ## Install or upgrade
 
-1. Install the Microsoft Store version of Codex and open it once. Install [Node.js](https://nodejs.org/en/download) 22 or later and confirm that `node --version` works in a new terminal.
+On Windows, you need the **official Codex desktop app** (now part of ChatGPT Desktop), **Codex CLI**, and **Node.js 22 or later**.
+
+Tested with the **x64 Microsoft Store installation**. Installs from the official web installer, `winget`, or offline MSIX are expected to work if Windows registers the `OpenAI.Codex` package and its Start menu entry is available. Offline MSIX and Arm64 have yet to be tested end to end. The sidebar requires the desktop app as its host. [OpenAI Windows deployment guide](https://learn.chatgpt.com/docs/enterprise/windows-deployment)
+
+1. Install the Codex desktop app and open it once. Install [Node.js](https://nodejs.org/en/download) 22 or later and confirm that `node --version` works in a new terminal.
 2. If the terminal cannot find `codex`, run `npm install -g @openai/codex` to install the official CLI. Open a new terminal and check `codex --version`. The installer was tested with Codex CLI 0.155.1 and Node.js 24.
 3. Extract the entire ZIP to a folder you plan to keep. Double-click `Install-Profile-Dock.cmd`. Use the same installer to upgrade a preview version.
 4. Save your work, fully quit and reopen Codex, then open **Profile Dock** from the sidebar. Select **Test background** to check that the plugin can start its background task.

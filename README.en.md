@@ -29,7 +29,9 @@
 
 ## Installation
 
-You’ll need **Codex Desktop from the Microsoft Store**, **Codex CLI**, and **Node.js 22 or later** on Windows.
+On Windows, you need the **official Codex desktop app** (now part of ChatGPT Desktop), **Codex CLI**, and **Node.js 22 or later**.
+
+Tested with the **x64 Microsoft Store installation**. Installs from the official web installer, `winget`, or offline MSIX are expected to work if Windows registers the `OpenAI.Codex` package and its Start menu entry is available. Offline MSIX and Arm64 have yet to be tested end to end. The sidebar requires the desktop app as its host. [OpenAI Windows deployment guide](https://learn.chatgpt.com/docs/enterprise/windows-deployment)
 
 1. Install Codex Desktop and open it once. Install [Node.js](https://nodejs.org/en/download), then run `node --version` and `codex --version` in a new terminal. If `codex` is missing, run `npm install -g @openai/codex` and reopen the terminal.
 2. Download `Codex-Profile-Dock-Windows-*.zip` from [GitHub Releases](https://github.com/HELIXXr/CodexProfileDock/releases/latest). Extract the entire ZIP to a folder you plan to keep.
