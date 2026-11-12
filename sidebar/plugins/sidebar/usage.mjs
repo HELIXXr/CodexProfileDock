@@ -6,7 +6,7 @@ import {fileURLToPath} from "node:url";
 import {promisify} from "node:util";
 
 const authScript = fileURLToPath(new URL("./scripts/Switch-Codex.ps1", import.meta.url));
-const appServerArgs = ["app-server", "--listen", "stdio://",
+export const appServerArgs = ["app-server", "--listen", "stdio://",
   "-c", 'cli_auth_credentials_store="file"', "-c", "analytics.enabled=false",
   "-c", 'chatgpt_base_url="https://chatgpt.com/backend-api/"'];
 
@@ -70,7 +70,7 @@ export async function queryRateLimits({command, args}, {accessToken, chatgptAcco
       child.stdin.write(JSON.stringify({jsonrpc:"2.0", method, params, id}) + "\n");
     };
     const lines = createInterface({input:child.stdout, crlfDelay:Infinity});
-    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.8.3"},
+    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.9.0-beta.1"},
       capabilities:{experimentalApi:true}}, 1);
     for await (const line of lines) {
       let message;

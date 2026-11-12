@@ -146,6 +146,14 @@ const messages={
  ticket_expired:["The confirmation expired. Select the account again.","确认已过期，请重新选择账号。"],
  operation_busy:["Another account action is in progress. Wait and try again.","有账号操作正在进行，请稍后再试。"],
  startup_busy:["The startup check and quota refresh are in progress.","正在运行启动自检和额度刷新，请稍候。"],
+ mac_file_auth_required:["Set Codex credential storage to file and sign in to ChatGPT again. See the macOS guide.","请按 macOS 指南将 Codex 登录存储设为 file，再重新登录 ChatGPT。"],
+ mac_config_unavailable:["Could not verify Codex’s credential storage setting.","无法确认 Codex 的登录存储设置。"],
+ mac_keychain_unavailable:["Profile Dock could not access the macOS login keychain.","Profile Dock 无法访问 macOS 登录钥匙串。"],
+ mac_alias_taken:["This alias belongs to a different account.","该别名已被另一个账号使用。"],
+ mac_save_current_first:["Save the current account before switching.","请先保存当前账号，再切换。"],
+ mac_desktop_unavailable:["Could not identify the running Codex desktop app.","无法识别当前运行的 Codex 桌面应用。"],
+ mac_quit_timeout:["Could not ask Codex to quit. Save your work and try again.","未能请求 Codex 退出。请保存工作后重试。"],
+ mac_codex_running:["Codex or a Codex CLI session is still running. Close it and try again.","Codex 或 Codex CLI 仍在运行，请关闭后重试。"],
  worker_start_failed:["The background task did not start. Your account was not changed. Diagnostic code: {reason}","后台未确认启动，已取消本次操作。账号未改变。诊断代码：{reason}"],
  usage_auth_unavailable:["Could not read this account’s saved sign-in.","无法读取此账号的登录快照。"],
  usage_cli_unavailable:["Could not find a runnable Codex App Server.","未找到可运行的 Codex App Server。"],
@@ -398,6 +406,7 @@ async function loadProfiles(){
   const op=data.operation;
   if(op?.kind==="Rename")status({queued:"rename_queued",running:"rename_running",renamed:"rename_complete",failed:"rename_incomplete",interrupted:"rename_interrupted"}[op.status]??"verify_alias");
   else if(op?.status==="probe_ok")status("probe_ok");
+  else if(op?.status==="failed" && Object.hasOwn(messages,op.reason))status(op.reason);
   else if(op?.status==="failed" && op.reason!=="operation")status("worker_start_failed",{reason:op.reason||"startup"});
   else status(op ? statuses[op.status]??"verify_account" : "choose_account");
   return data;
@@ -470,7 +479,7 @@ $("yes").onclick=async()=>{
 applyLocale(document.documentElement.lang);
 (async()=>{
  try{
-  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.8.3"},appCapabilities:{}});
+  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.9.0-beta.1"},appCapabilities:{}});
   applyLocale(initialized?.hostContext?.locale||document.documentElement.lang);
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {randomUUID} from "node:crypto";
 import {readProfileUsage} from "./usage.mjs";
+import {createMacPlatform,launchMacWorker,macPaths} from "./macos.mjs";
 export const validName = n => typeof n==="string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(n);
 
 export class PanelError extends Error {
@@ -19,27 +20,34 @@ function workerAlive(pid){
 }
 
 export function createBackend({local=process.env.LOCALAPPDATA, userProfile=process.env.USERPROFILE, codexHome=process.env.CODEX_HOME, stateDir, launch, startupTimeoutMs=6000, isWorkerAlive=workerAlive}={}) {
-  if(!local) throw Error("Windows local data directory is unavailable");
+  const macSettings=process.platform==="darwin"?macPaths(userProfile,local):null;
+  if(macSettings) ({local,userProfile}=macSettings);
+  if(!local) throw Error("Local data directory is unavailable");
   local=path.resolve(local);
   if(!userProfile) throw Error("Windows user profile directory is unavailable");
   // Store-packaged Codex redirects new AppData files away from the Explorer worker.
-  const state=stateDir??path.resolve(userProfile,".codex-profile-dock-sidebar");
-  const vault=fs.existsSync(path.join(local,"LocalCodexSwitch"))?path.join(local,"LocalCodexSwitch"):path.join(local,"CodexProfileDock");
+  const state=stateDir??macSettings?.state??path.resolve(userProfile,".codex-profile-dock-sidebar");
+  const vault=macSettings?.vault??(fs.existsSync(path.join(local,"LocalCodexSwitch"))?path.join(local,"LocalCodexSwitch"):path.join(local,"CodexProfileDock"));
+  const home=path.resolve(codexHome || path.join(userProfile, ".codex"));
+  const mac=macSettings?createMacPlatform({...macSettings,codexHome:home}):null;
   const pending=new Map();
   const usage=new Map();
   const lock=path.join(state,"operation.lock");
   function profiles(){
-    try { return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
+    try {
+      if(mac)return mac.vault.names().sort();
+      return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
     catch(e){if(e.code==="ENOENT")return [];throw new PanelError("profiles_unreadable");}
   }
   function profileRef(name){
     try{
-      const file=fs.statSync(path.join(vault,name+".dpapi"),{bigint:true});
+      const file=fs.statSync(path.join(vault,name+(mac?".keychain":".dpapi")),{bigint:true});
       return file.isFile()?`${file.dev}:${file.ino}:${file.birthtimeNs}`:null;
     }catch{return null;}
   }
-  const home=path.resolve(codexHome || path.join(process.env.USERPROFILE ?? local, ".codex"));
-  const run=launch??(args=>new Promise((resolve,reject)=>{
+  const run=launch??(mac?args=>launchMacWorker("./macos-worker.mjs",[
+    state,userProfile,local,home,args[1],args[3],args[5],...args.slice(7)
+  ]):args=>new Promise((resolve,reject)=>{
     const exe=path.join(process.env.SystemRoot??"C:\\\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
     const broker=fileURLToPath(new URL("./scripts/Launch-SidebarWorker.ps1",import.meta.url));
     const child=spawn(exe,["-NoProfile","-ExecutionPolicy","RemoteSigned","-STA","-NonInteractive","-WindowStyle","Hidden","-File",broker,...args,
@@ -79,6 +87,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   }
   return {
     stateDir:state,
+    startupOptions:{state,local,userProfile,codexHome:home,mac},
     list(){
       const operation=inspectOperation();
       const names=profiles();
@@ -92,7 +101,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       const ref=profileRef(name);
       if(!ref)throw Error("usage_profile_missing");
       try{
-        const windows=await readProfileUsage({name,vault,codexHome:home,state});
+        const windows=mac?await mac.usage(name,state):await readProfileUsage({name,vault,codexHome:home,state});
         const snapshot={windows,checkedAt:new Date().toISOString()};
         if(profileRef(name)!==ref)throw Error("usage_profile_missing");
         usage.set(ref,snapshot);
@@ -146,7 +155,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       const intent=pending.get(ticket);pending.delete(ticket);
       if(!intent||intent.expires<Date.now())throw new PanelError("ticket_expired");
       if(intent.action==="Switch"&&!profiles().includes(intent.name))throw new PanelError("profile_missing");
-      fs.mkdirSync(state,{recursive:true});
+      fs.mkdirSync(state,{recursive:true,mode:0o700});
       inspectOperation();
       let handle;
       try{handle=fs.openSync(lock,"wx");}catch(e){if(e.code==="EEXIST")throw new PanelError("operation_busy");throw e;}

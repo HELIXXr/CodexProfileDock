@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {promisify} from "node:util";
+import {launchMacWorker} from "./macos.mjs";
 
 export async function desktopSession(parentPid=process.ppid){
   const powershell=path.join(process.env.SystemRoot??"C:\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
@@ -38,17 +39,21 @@ function startupSnapshot(file){
   return data;
 }
 
-export function createStartupClient({state,local,userProfile,codexHome}){
+export function createStartupClient({state,local,userProfile,codexHome,mac}){
   let file, task, launchedAt, launchFailed=false;
   async function launch(){
-    const key=await desktopSession();
+    const key=await (mac?mac.desktopSession():desktopSession());
     if(!key)return;
     file=path.join(state,"startup-"+key+".json");
     if(startupSnapshot(file))return;
-    const powershell=path.join(process.env.SystemRoot??"C:\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
-    const script=fileURLToPath(new URL("./scripts/Launch-StartupWorker.ps1",import.meta.url));
     launchedAt=Date.now();
     try{
+      if(mac){
+        await launchMacWorker("./startup-worker.mjs",[key,local,userProfile,codexHome]);
+        return;
+      }
+      const powershell=path.join(process.env.SystemRoot??"C:\\Windows","System32","WindowsPowerShell","v1.0","powershell.exe");
+      const script=fileURLToPath(new URL("./scripts/Launch-StartupWorker.ps1",import.meta.url));
       const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-ExecutionPolicy","RemoteSigned","-STA","-NonInteractive",
         "-File",script,"-DesktopSession",key,"-Node",process.execPath,"-Local",local,
         "-UserProfile",userProfile,"-CodexHome",codexHome],{timeout:5000,windowsHide:true});
@@ -71,7 +76,7 @@ export function createStartup({state,identify=desktopSession,list,probe,query}){
   async function run(){
     const key=await identify();
     if(!key || !/^\d+-\d+$/.test(key))return;
-    fs.mkdirSync(state,{recursive:true});
+    fs.mkdirSync(state,{recursive:true,mode:0o700});
     file=path.join(state,"startup-"+key+".json");
     const data={pid:process.pid,status:"running",probe:"pending",total:0,
       usage:Object.create(null),errors:Object.create(null)};

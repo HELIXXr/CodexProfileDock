@@ -1,15 +1,9 @@
 import {readFileSync} from "node:fs";
-import path from "node:path";
 import {createInterface} from "node:readline";
 import {createBackend,PanelError} from "./backend.mjs";
 import {createStartupClient} from "./startup.mjs";
 const backend=createBackend(),uri="ui://profile-dock/sidebar.html";
-const startup=createStartupClient({
- state:backend.stateDir,
- local:path.resolve(process.env.LOCALAPPDATA),
- userProfile:path.resolve(process.env.USERPROFILE),
- codexHome:path.resolve(process.env.CODEX_HOME||path.join(process.env.USERPROFILE,".codex"))
-});
+const startup=createStartupClient(backend.startupOptions);
 
 function listProfiles(){
  const {profileRefs,...panel}=backend.list(), auto=startup.snapshot();
@@ -47,7 +41,7 @@ const tools=[
 const result=data=>({content:[{type:"text",text:"Profile Dock panel response."}],_meta:{panel:data}});
 async function dispatch(method,p){
  switch(method){
- case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.8.3"},capabilities:{tools:{},resources:{}}};
+ case "initialize":return {protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(p.protocolVersion)?p.protocolVersion:"2025-11-25",serverInfo:{name:"profile-dock-sidebar",title:"Profile Dock",version:"0.9.0-beta.1"},capabilities:{tools:{},resources:{}}};
  case "ping":return {};
  case "tools/list":return {tools};
  case "tools/call":try{
