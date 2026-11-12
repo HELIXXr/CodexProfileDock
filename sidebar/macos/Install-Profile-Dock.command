@@ -38,6 +38,7 @@ cp "$root/macos/mcp.json" "$root/macos/run-mcp.sh" "$plugin/"
 if [[ ! -x "$support/bin/profile-dock-native" ]] || ! cmp -s "$root/macos/native.m" "$support/bin/native-source.m"; then
   /usr/bin/xcrun clang -fobjc-arc -O2 -framework AppKit -framework Security \
     -o "$work/profile-dock-native" "$root/macos/native.m"
+  /usr/bin/codesign --force --sign - "$work/profile-dock-native"
   chmod 700 "$work/profile-dock-native"
   mv -f "$work/profile-dock-native" "$support/bin/profile-dock-native"
   cp "$root/macos/native.m" "$support/bin/native-source.m"

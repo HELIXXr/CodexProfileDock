@@ -86,7 +86,10 @@ int main(int argc, const char *argv[]) {
             SecKeychainRef defaultKeychain = NULL;
             OSStatus status = SecKeychainCopyDefault(&defaultKeychain);
             if (defaultKeychain) CFRelease(defaultKeychain);
-            if (status != errSecSuccess) return 1;
+            if (status != errSecSuccess) {
+                fprintf(stderr, "Default keychain unavailable (%d).\n", (int)status);
+                return 1;
+            }
             puts("ok");
             return 0;
         }

@@ -275,8 +275,12 @@ export function createMacPlatform({ support, vault, codexHome }) {
   return {
     vault: platformVault,
     async probe() {
-      const { stdout } = await exec(native, ["probe"], { timeout: 4000 });
-      if (stdout.trim() !== "ok") throw Error("mac_desktop_unavailable");
+      try {
+        const { stdout } = await exec(native, ["probe"], { timeout: 4000 });
+        if (stdout.trim() !== "ok") throw Error();
+      } catch {
+        throw Error("mac_keychain_unavailable");
+      }
     },
     async desktopSession(parentPid = process.ppid) {
       try {

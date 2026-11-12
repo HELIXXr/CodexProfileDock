@@ -36,8 +36,8 @@ jobs:
           security default-keychain -d user -s "$keychain"
           security list-keychains -d user -s "$keychain"
 
-          export HOME="$RUNNER_TEMP/Profile Dock Test User"
-          export CODEX_HOME="$HOME/.codex"
+          # Security.framework reads keychain preferences from the runner’s actual home.
+          export CODEX_HOME="$RUNNER_TEMP/Profile Dock Test User/.codex"
           mkdir -p "$CODEX_HOME"
           printf '%s\n' 'cli_auth_credentials_store = "file"' > "$CODEX_HOME/config.toml"
           bash sidebar/macos/Install-Profile-Dock.command

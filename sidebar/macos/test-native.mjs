@@ -14,7 +14,9 @@ const cli = fs.readFileSync(path.join(root, "codex-path"), "utf8").trim();
 const id = randomUUID();
 const sample = Buffer.alloc(24 * 1024, 42);
 const call = (args, input) => spawnSync(native, args, { input, timeout: 4000 });
-assert.equal(call(["probe"]).stdout.toString().trim(), "ok");
+const probe = call(["probe"]);
+assert.equal(probe.status, 0, probe.stderr.toString());
+assert.equal(probe.stdout.toString().trim(), "ok");
 assert.equal(call(["put", id], sample).status, 0);
 try {
   const result = call(["get", id]);
@@ -28,7 +30,10 @@ assert.equal(await readMacAuthMode(cli, process.env.CODEX_HOME), "file");
 fs.writeFileSync(path.join(process.env.CODEX_HOME, "config.toml"), 'cli_auth_credentials_store = "keyring"\n');
 assert.equal(await readMacAuthMode(cli, process.env.CODEX_HOME), "keyring");
 
-const launcher = path.join(root, "marketplace", "plugins", "sidebar", "run-mcp.sh");
+const source = path.join(root, "marketplace", "plugins", "sidebar");
+const { version } = JSON.parse(fs.readFileSync(path.join(source, "plugin.json"), "utf8"));
+const launcher = path.join(process.env.CODEX_HOME, "plugins", "cache", "helix-profile-dock-preview",
+  "helix-codex-profile-dock-sidebar", version, "run-mcp.sh");
 const server = spawn("/bin/bash", [launcher], { stdio: ["pipe", "pipe", "inherit"] });
 const closed = new Promise(resolve => server.once("close", resolve));
 const timer = setTimeout(() => server.kill(), 10000);
@@ -47,7 +52,8 @@ try {
 }
 const latest = path.join(root, "state", "latest.json");
 for (let n = 0; n < 80; n++) {
-  if (JSON.parse(fs.readFileSync(latest, "utf8")).status === "probe_ok") break;
+  if (JSON.parse(fs.readFileSync(latest, "utf8")).status === "probe_ok" &&
+      !fs.existsSync(path.join(root, "state", "operation.lock"))) break;
   await delay(50);
 }
 assert.equal(JSON.parse(fs.readFileSync(latest, "utf8")).status, "probe_ok");
