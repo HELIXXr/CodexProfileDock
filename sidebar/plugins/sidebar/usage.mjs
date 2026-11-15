@@ -54,7 +54,7 @@ export async function queryRateLimits({command, args}, {accessToken, chatgptAcco
   let expired = false;
   try {
     const env = {...process.env, CODEX_HOME:home, RUST_LOG:"off", RUST_BACKTRACE:"0"};
-    for (const name of ["OPENAI_API_KEY", "CODEX_API_KEY", "OPENAI_BASE_URL", "CODEX_CHATGPT_BASE_URL", "CHATGPT_BASE_URL", "CODEX_CHATGPT_ACCESS_TOKEN"]) {
+    for (const name of ["OPENAI_API_KEY", "CODEX_API_KEY", "OPENAI_BASE_URL", "CODEX_CHATGPT_BASE_URL", "CHATGPT_BASE_URL", "CODEX_CHATGPT_ACCESS_TOKEN", "NODE_OPTIONS", "NODE_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH"]) {
       delete env[name];
     }
     child = spawn(command, args, {env, cwd:home, stdio:["pipe","pipe","ignore"], windowsHide:true});
@@ -70,7 +70,7 @@ export async function queryRateLimits({command, args}, {accessToken, chatgptAcco
       child.stdin.write(JSON.stringify({jsonrpc:"2.0", method, params, id}) + "\n");
     };
     const lines = createInterface({input:child.stdout, crlfDelay:Infinity});
-    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.9.0-beta.1"},
+    send("initialize", {clientInfo:{name:"profile_dock",title:"Profile Dock",version:"0.9.1"},
       capabilities:{experimentalApi:true}}, 1);
     for await (const line of lines) {
       let message;

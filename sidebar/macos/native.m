@@ -1,5 +1,8 @@
 #import <AppKit/AppKit.h>
 #import <Security/Security.h>
+#import <LocalAuthentication/LocalAuthentication.h>
+#include <poll.h>
+#include <unistd.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,39 +45,95 @@ static int quit(const char *pidText, const char *timeText) {
     return [app terminate] ? 0 : 1;
 }
 
-static int keychain(NSString *action, NSString *account) {
-    if (![[NSUUID alloc] initWithUUIDString:account]) return 1;
-    NSMutableDictionary *item = [@{
-        (__bridge id)kSecClass: (__bridge id)kSecClassGenericPassword,
-        (__bridge id)kSecAttrService: Service,
-        (__bridge id)kSecAttrAccount: account,
-    } mutableCopy];
+static BOOL authorizeSession(void) {
+    LAContext *context = [[LAContext alloc] init];
+    NSError *error = nil;
+    if (![context canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&error]) return NO;
+    __block BOOL finished = NO;
+    __block BOOL allowed = NO;
+    [context evaluatePolicy:LAPolicyDeviceOwnerAuthentication
+            localizedReason:@"Allow Profile Dock to access saved Codex accounts."
+                      reply:^(BOOL success, NSError *failure) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            allowed = success;
+            finished = YES;
+        });
+    }];
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:60];
+    while (!finished && deadline.timeIntervalSinceNow > 0) {
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
+                               beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+    }
+    [context invalidate];
+    return finished && allowed;
+}
 
+static NSData *sessionData(NSString *action, NSString *account, NSData *data, BOOL *ok) {
+    NSMutableDictionary *query = [@{
+        (__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,
+        (__bridge id)kSecAttrService:Service,
+        (__bridge id)kSecAttrAccount:account,
+    } mutableCopy];
     if ([action isEqualToString:@"put"]) {
-        NSMutableData *data = [NSMutableData data];
-        NSFileHandle *input = NSFileHandle.fileHandleWithStandardInput;
-        while (data.length <= MaxAuth) {
-            NSData *chunk = [input readDataOfLength:16384];
-            if (!chunk.length) break;
-            [data appendData:chunk];
-        }
-        if (!data.length || data.length > MaxAuth) return 1;
-        item[(__bridge id)kSecValueData] = data;
-        return SecItemAdd((__bridge CFDictionaryRef)item, NULL) == errSecSuccess ? 0 : 1;
-    }
-    if ([action isEqualToString:@"get"]) {
-        item[(__bridge id)kSecReturnData] = @YES;
-        item[(__bridge id)kSecMatchLimit] = (__bridge id)kSecMatchLimitOne;
+        query[(__bridge id)kSecValueData] = data;
+        *ok = SecItemAdd((__bridge CFDictionaryRef)query,NULL) == errSecSuccess;
+    } else if ([action isEqualToString:@"get"]) {
+        query[(__bridge id)kSecReturnData] = @YES;
+        query[(__bridge id)kSecMatchLimit] = (__bridge id)kSecMatchLimitOne;
         CFTypeRef result = NULL;
-        OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)item, &result);
-        NSData *data = CFBridgingRelease(result);
-        return status == errSecSuccess && data.length <= MaxAuth ? writeBytes(data) : 1;
+        OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query,&result);
+        NSData *bytes = CFBridgingRelease(result);
+        *ok = status == errSecSuccess && bytes.length <= MaxAuth;
+        return *ok ? bytes : nil;
+    } else if ([action isEqualToString:@"delete"]) {
+        OSStatus status = SecItemDelete((__bridge CFDictionaryRef)query);
+        *ok = status == errSecSuccess || status == errSecItemNotFound;
     }
-    if ([action isEqualToString:@"delete"]) {
-        OSStatus status = SecItemDelete((__bridge CFDictionaryRef)item);
-        return status == errSecSuccess || status == errSecItemNotFound ? 0 : 1;
+    return nil;
+}
+
+static int session(void) {
+    char *line = NULL;
+    size_t capacity = 0;
+    BOOL authorized = NO;
+    NSDate *expires = nil;
+    while (YES) {
+        struct pollfd descriptor = {.fd=STDIN_FILENO,.events=POLLIN};
+        if (poll(&descriptor,1,60000) <= 0) break;
+        ssize_t length = getline(&line,&capacity,stdin);
+        if (length <= 0) break;
+        if ((NSUInteger)length > MaxAuth * 2) { free(line); return 1; }
+        @autoreleasepool {
+            NSData *input = [NSData dataWithBytes:line length:(NSUInteger)length];
+            NSDictionary *request = [NSJSONSerialization JSONObjectWithData:input options:0 error:NULL];
+            if (![request isKindOfClass:[NSDictionary class]]) break;
+            NSString *account=request[@"account"], *action=request[@"action"], *encoded=request[@"data"];
+            if (![account isKindOfClass:[NSString class]] || ![[NSUUID alloc] initWithUUIDString:account] ||
+                ![action isKindOfClass:[NSString class]] ||
+                ![@[@"get",@"put",@"delete"] containsObject:action] ||
+                ![encoded isKindOfClass:[NSString class]] ||
+                ![request[@"id"] isKindOfClass:[NSNumber class]]) break;
+            NSData *data=[[NSData alloc] initWithBase64EncodedString:encoded options:0];
+            if (data.length > MaxAuth || ([action isEqualToString:@"put"] && !data.length)) break;
+            if (!authorized) {
+                if (!authorizeSession()) {
+                    writeBytes([NSJSONSerialization dataWithJSONObject:@{@"id":request[@"id"],@"ok":@NO} options:0 error:NULL]);
+                    puts(""); fflush(stdout); break;
+                }
+                authorized=YES;
+                expires=[NSDate dateWithTimeIntervalSinceNow:120];
+            }
+            if (expires.timeIntervalSinceNow <= 0) break;
+            BOOL ok=NO;
+            NSData *reply=sessionData(action,account,data,&ok);
+            NSDictionary *output=@{@"id":request[@"id"],@"ok":@(ok),
+                                   @"data":reply ? [reply base64EncodedStringWithOptions:0] : @""};
+            writeBytes([NSJSONSerialization dataWithJSONObject:output options:0 error:NULL]);
+            puts(""); fflush(stdout);
+        }
     }
-    return 1;
+    free(line);
+    return 0;
 }
 
 int main(int argc, const char *argv[]) {
@@ -94,7 +153,7 @@ int main(int argc, const char *argv[]) {
             return 0;
         }
         if (argc == 4 && [action isEqualToString:@"quit"]) return quit(argv[2], argv[3]);
-        if (argc == 3) return keychain(action, [NSString stringWithUTF8String:argv[2]]);
+        if (argc == 2 && [action isEqualToString:@"session"]) return session();
         return 1;
     }
 }

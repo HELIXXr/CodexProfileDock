@@ -17,15 +17,15 @@ const call = (args, input) => spawnSync(native, args, { input, timeout: 4000 });
 const probe = call(["probe"]);
 assert.equal(probe.status, 0, probe.stderr.toString());
 assert.equal(probe.stdout.toString().trim(), "ok");
-assert.equal(call(["put", id], sample).status, 0);
-try {
-  const result = call(["get", id]);
-  assert.equal(result.status, 0);
-  assert.deepEqual(result.stdout, sample);
-} finally {
-  assert.equal(call(["delete", id]).status, 0);
+// Raw credential export and mutation commands must be rejected before Keychain access.
+for(const action of ["get","put","delete"]){
+  const denied=call([action,id],sample);
+  assert.notEqual(denied.status,0);
+  assert.equal(denied.stdout.length,0);
 }
-assert.notEqual(call(["get", id]).status, 0);
+const rejected=call(["session"],Buffer.from(JSON.stringify({id:1,action:"get",account:"not-a-uuid",data:""})+"\n"));
+assert.equal(rejected.stdout.length,0);
+// Interactive biometric/password approval cannot be exercised on a headless runner.
 assert.equal(await readMacAuthMode(cli, process.env.CODEX_HOME), "file");
 fs.writeFileSync(path.join(process.env.CODEX_HOME, "config.toml"), 'cli_auth_credentials_store = "keyring"\n');
 assert.equal(await readMacAuthMode(cli, process.env.CODEX_HOME), "keyring");
@@ -59,4 +59,4 @@ for (let n = 0; n < 80; n++) {
 assert.equal(JSON.parse(fs.readFileSync(latest, "utf8")).status, "probe_ok");
 assert.equal(fs.existsSync(path.join(root, "state", "operation.lock")), false);
 assert.equal(fs.existsSync(path.join(process.env.CODEX_HOME, "auth.json")), false);
-console.log("PASS native Keychain round trip, actual Codex configuration, and detached worker after MCP exit");
+console.log("PASS denied raw Keychain commands, configuration, and detached worker after MCP exit");

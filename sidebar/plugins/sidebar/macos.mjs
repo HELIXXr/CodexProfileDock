@@ -95,14 +95,25 @@ export function createMacVault(directory, keychain) {
 
   return {
     names,
-    read(name) {
-      return keychain("get", itemId(name));
+    async read(name) {
+      const bytes=await keychain("get",itemId(name));
+      let record;
+      try { record=JSON.parse(bytes.toString("utf8")); } catch { throw Error("mac_keychain_unavailable"); }
+      if(record.profileDockFormat===1){
+        if(record.alias!==name)throw Error("profile_changed");
+        return Buffer.from(record.auth,"base64");
+      }
+      // Adoption of pre-hardening records happens only after user-authorized access.
+      parseMacAuth(bytes);
+      await this.write(name,bytes);
+      return bytes;
     },
     async write(name, bytes) {
       fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
       const oldId = names().includes(name) ? itemId(name) : null;
       const id = randomUUID();
-      await keychain("put", id, bytes);
+      const record=Buffer.from(JSON.stringify({profileDockFormat:1,alias:name,auth:Buffer.from(bytes).toString("base64")}));
+      await keychain("put",id,record);
       try {
         writePrivateAtomic(file(name), id);
       } catch (error) {
@@ -117,7 +128,19 @@ export function createMacVault(directory, keychain) {
       if (existing.some(other => other !== name && other.toLowerCase() === newName.toLowerCase())) {
         throw Error("rename_exists");
       }
-      if (name !== newName) fs.renameSync(file(name), file(newName));
+      if(name===newName)return;
+      const bytes=await this.read(name);
+      const oldId=itemId(name);
+      const previous=path.join(directory,"."+randomUUID()+".rename");
+      fs.renameSync(file(name),previous);
+      try {
+        await this.write(newName,bytes);
+      } catch(error) {
+        fs.renameSync(previous,file(name));
+        throw error;
+      }
+      fs.rmSync(previous);
+      await keychain("delete",oldId).catch(()=>{});
     },
   };
 }
@@ -213,15 +236,40 @@ export function launchMacWorker(script, args) {
 export function createMacPlatform({ support, vault, codexHome }) {
   const native = path.join(support, "bin", "profile-dock-native");
   const auth = path.join(codexHome, "auth.json");
-  const platformVault = createMacVault(vault, async (action, id, data) => {
-    const request = exec(native, [action, id], { encoding: "buffer", timeout: 10000, maxBuffer: maxAuthSize + 1024 });
-    request.child.stdin.on("error", () => {});
-    request.child.stdin.end(data);
-    try {
-      return (await request).stdout;
-    } catch {
-      throw Error("mac_keychain_unavailable");
+  let session, pending=new Map(), counter=0;
+  function closeSession(){
+    session?.stdin.end();
+    session=null;
+    for(const task of pending.values())task.reject(Error("mac_keychain_unavailable"));
+    pending.clear();
+  }
+  async function keychainRequest(action,id,data){
+    if(!session){
+      session=spawn(native,["session"],{stdio:["pipe","pipe","ignore"]});
+      const child=session;
+      child.on("error",closeSession);
+      child.stdin.on("error",closeSession);
+      child.once("close",()=>{if(session===child)closeSession();});
+      const lines=createInterface({input:child.stdout});
+      lines.on("line",line=>{
+        let reply;try{reply=JSON.parse(line);}catch{return closeSession();}
+        const task=pending.get(reply.id);
+        if(!task)return;
+        pending.delete(reply.id);
+        reply.ok?task.resolve(Buffer.from(reply.data??"","base64")):task.reject(Error("mac_keychain_unavailable"));
+      });
     }
+    const requestId=++counter;
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{pending.delete(requestId);reject(Error("mac_keychain_unavailable"));closeSession();},65000);
+      pending.set(requestId,{resolve:value=>{clearTimeout(timer);resolve(value);},reject:error=>{clearTimeout(timer);reject(error);}});
+      session.stdin.write(JSON.stringify({id:requestId,action,account:id,data:data?Buffer.from(data).toString("base64"):""})+"\n");
+    });
+  }
+  const platformVault = createMacVault(vault, async (action, id, data) => {
+    return keychainRequest(action,id,data);
+
+
   });
 
   async function desktop() {
@@ -274,6 +322,7 @@ export function createMacPlatform({ support, vault, codexHome }) {
 
   return {
     vault: platformVault,
+    close:closeSession,
     async probe() {
       try {
         const { stdout } = await exec(native, ["probe"], { timeout: 4000 });
@@ -295,6 +344,7 @@ export function createMacPlatform({ support, vault, codexHome }) {
       return null;
     },
     async usage(name, state) {
+      try {
       let saved;
       try {
         saved = parseMacAuth(await platformVault.read(name));
@@ -305,9 +355,11 @@ export function createMacPlatform({ support, vault, codexHome }) {
         const active = parseMacAuth(readActive(auth));
         if (active.identity === saved.identity) saved = active;
       } catch {}
-      return queryRateLimits({ command: codexExecutable(), args: appServerArgs }, saved, state);
+      return await queryRateLimits({ command: codexExecutable(), args: appServerArgs }, saved, state);
+      } finally { closeSession(); }
     },
     async run(action, name) {
+      try {
       const command = codexExecutable();
       if (await readMacAuthMode(command, codexHome) !== "file") throw Error("mac_file_auth_required");
       const app = await desktop();
@@ -340,6 +392,7 @@ export function createMacPlatform({ support, vault, codexHome }) {
         } catch {}
       }
       return result;
+      } finally { closeSession(); }
     },
   };
 }

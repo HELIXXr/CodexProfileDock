@@ -53,6 +53,7 @@ try {
 } catch (error) {
   if (ownsLock()) publish("failed", knownErrors.has(error.message) ? error.message : "operation");
 } finally {
+  platform.close();
   if (ownsLock()) {
     for (const suffix of [".ready", ".go"]) fs.rmSync(files(suffix), { force: true });
     fs.rmSync(lock);

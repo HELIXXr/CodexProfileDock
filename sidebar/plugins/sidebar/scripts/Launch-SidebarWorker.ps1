@@ -30,4 +30,3 @@ try {
  'explorer_unavailable'
  exit 1
 }
-

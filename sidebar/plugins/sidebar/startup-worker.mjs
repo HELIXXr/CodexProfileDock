@@ -11,7 +11,7 @@ if(/^\d+-\d+$/.test(key) && [local,userProfile,codexHome].every(value=>value&&pa
   state:backend.stateDir,
   identify:async()=>key,
   list:()=>backend.list(),
-  query:name=>backend.refreshUsage({name}),
+  query:name=>process.platform==="darwin"?Promise.reject(Error("usage_user_presence_required")):backend.refreshUsage({name}),
   async probe(){
    const {id}=await selfTest.probe();
    const deadline=Date.now()+4000;

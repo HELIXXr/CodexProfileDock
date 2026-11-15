@@ -1,4 +1,4 @@
-# Codex Profile Dock 0.8.3 for Windows
+# Codex Profile Dock 0.9.1 for Windows
 
 [中文安装和使用说明](README.md)
 
@@ -41,3 +41,5 @@ Double-click `Uninstall-Profile-Dock.cmd`, then fully quit and reopen Codex. Thi
 ## Account data
 
 Saved sign-ins are encrypted by Windows DPAPI under `%LOCALAPPDATA%\CodexProfileDock` or the existing `LocalCodexSwitch` folder. Quota requests go to OpenAI through Codex App Server. The panel receives quota data only. Keep `auth.json`, `.dpapi` files, and account backups private.
+
+[macOS guide](README.macOS.md) · [Security update / 安全更新](SECURITY.md)

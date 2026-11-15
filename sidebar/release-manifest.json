@@ -1,0 +1,137 @@
+{
+  "version": "0.9.1",
+  "files": [
+    {
+      "path": ".agents/plugins/marketplace.json",
+      "sha256": "e6250e8df851c613187ca9abc03397af50168b6154b9d3c7ee52e6a275f79373"
+    },
+    {
+      "path": "Install-Profile-Dock.cmd",
+      "sha256": "e1737d16ff48101ee96a84ea5c17c3d0cb9863c6d0075e6cf0be1c36c245fa06"
+    },
+    {
+      "path": "README.en.md",
+      "sha256": "c1561d83838ac0ec5b00109b1cb3fce212ed38133b2e55569f5ea869e536dc68"
+    },
+    {
+      "path": "README.macOS.md",
+      "sha256": "b7787ba1dfb6a09a0408bfd970e62a4f081d1406609e6675ec9cd448cc94e3a1"
+    },
+    {
+      "path": "README.md",
+      "sha256": "7793123338d44eda63166700360d3e3c22a873a6fa909e84cc94013a5386c46c"
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "23a6cc69ff8f47ae100d5fe6d94abaeb157f821c17b55168ac1c375e3f0f4fcc"
+    },
+    {
+      "path": "Setup-Profile-Dock.ps1",
+      "sha256": "700e69aebccd1afd97a03b6e610909b1be227b28b0a7eb530076e7e3725ae57b"
+    },
+    {
+      "path": "Uninstall-Profile-Dock.cmd",
+      "sha256": "e6fc0976bee39b0d5dd9cfcc3819914ee726db0f98ff0dd56c488a0d3418d097"
+    },
+    {
+      "path": "macos/Install-Profile-Dock.command",
+      "sha256": "e96b0f4700fa697291e82f336a286ec339c6b6674f9e79c1f6997e05500e3c0c"
+    },
+    {
+      "path": "macos/Uninstall-Profile-Dock.command",
+      "sha256": "f82495f0dbe0f09d97298c52b49bf1207567a102182049f0407285a64d5b664a"
+    },
+    {
+      "path": "macos/mcp.json",
+      "sha256": "bff025f59fbe275a342ad0999a57566538a3dc56a3f43f6f5ea4c27158a0bab6"
+    },
+    {
+      "path": "macos/native.m",
+      "sha256": "da1aa59f8a1daf456c1ac4375a071ff8dc55efe62bf5cecca4c7e1053759f3a2"
+    },
+    {
+      "path": "macos/run-mcp.sh",
+      "sha256": "c08438e51578fa11ee3d7ed10ce735a36cdfb0dca74051e4c7865c9de6fc9198"
+    },
+    {
+      "path": "plugins/sidebar/assets/profile-dock-dark.png",
+      "sha256": "f6b8cb55f53129760ce517223920abba38060bb25197812e1f615a3397c9b1ab"
+    },
+    {
+      "path": "plugins/sidebar/assets/profile-dock-light.png",
+      "sha256": "e283a131e630d50f6252665326dc8b7b67f1065938a6dd2a2d2da9e364502959"
+    },
+    {
+      "path": "plugins/sidebar/backend.mjs",
+      "sha256": "309017692e531fc8c011a9f83683211c2bb3286652f843fea747044a16365082"
+    },
+    {
+      "path": "plugins/sidebar/macos-worker.mjs",
+      "sha256": "7ee02fef43a101d9a0516fb506666de241fa4ccfbc4e323581600a05ecab2af1"
+    },
+    {
+      "path": "plugins/sidebar/macos.mjs",
+      "sha256": "9545b0116664db869c484b3eccf912b1b6f75adb9f39b9926f6c02a3d7ad29b6"
+    },
+    {
+      "path": "plugins/sidebar/mcp.json",
+      "sha256": "e737204add58bf0319bc1c705ab4923e7d110fc57d7130bd3a5954646daabde1"
+    },
+    {
+      "path": "plugins/sidebar/plugin.json",
+      "sha256": "9e1d74de3afb4dd33b1f17e967368848235d9b3ddb3deb6cfef29468356bf219"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Desktop-Restart.ps1",
+      "sha256": "9e941fe300e287b7859cc0ad3178305b269586f3d6b75f9ae1b50ed9f6916d7c"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Get-DesktopSession.ps1",
+      "sha256": "8528fe3411a70301e2b91e5b64068d71395fcc0fee9bc43cdffe3903763ba205"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Launch-SidebarWorker.ps1",
+      "sha256": "a3cec1fe016b63e123c71c2e2fb9d5dc402f5c9c57ed246dbc61747b90790ab6"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Launch-StartupWorker.ps1",
+      "sha256": "9aae6648aef3f8be63b2e412574968b97340e2dcdd64b84ee4a3df62e63729e7"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Sidebar-Worker.ps1",
+      "sha256": "80c9c81b8f6dcc61bf4fc30c54509422490596babb2f27dd390f99cb334ef744"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Switch-Codex.ps1",
+      "sha256": "26abee3200a58d450af2a38dd1546cb1b2872af426f75db29546fef1b1d63b1a"
+    },
+    {
+      "path": "plugins/sidebar/scripts/Vault-Security.ps1",
+      "sha256": "2f65dd113293f070a7b9f09578bb720575ff6e60715ad4651463ec6e5f139f82"
+    },
+    {
+      "path": "plugins/sidebar/server.mjs",
+      "sha256": "bde206f576297ed726af082253a3ed95b0d67e7efd6ad815408a4377e577fee9"
+    },
+    {
+      "path": "plugins/sidebar/sidebar.html",
+      "sha256": "91d5c3d2446870b6e2884ff121f740b4b34f2aeeaaef1ddddac0843a027f9800"
+    },
+    {
+      "path": "plugins/sidebar/startup-worker.mjs",
+      "sha256": "34e7b983abfa1ec4e4b2eec8c585af23ffc3a69af350deba4fa913d6b3e5a246"
+    },
+    {
+      "path": "plugins/sidebar/startup.mjs",
+      "sha256": "a93c5e967e91d41d28fe58286c5095e7aae026a11d2966e50c4b472f38444a11"
+    },
+    {
+      "path": "plugins/sidebar/usage.mjs",
+      "sha256": "32c2ccd6c396c02f4771446513ea17d95b6b813e9d5b628c1a27079dfeb53b93"
+    },
+    {
+      "path": "verify-package.mjs",
+      "sha256": "0bbc2138c6d96a51d7fd1aa1bededc4b94f2924d9b164c48f98598fe59f909f6"
+    }
+  ]
+}

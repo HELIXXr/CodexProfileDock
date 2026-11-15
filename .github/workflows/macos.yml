@@ -2,7 +2,7 @@ name: macOS verification
 
 on:
   push:
-    branches: [macos-beta]
+    branches: [macos-beta, security-hardening]
   workflow_dispatch:
 
 permissions:

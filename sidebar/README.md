@@ -1,4 +1,4 @@
-# Codex Profile Dock 0.8.3 · Windows 侧栏版
+# Codex Profile Dock 0.9.1 · Windows 侧栏版
 
 [English installation and usage guide](README.en.md)
 
@@ -41,3 +41,5 @@
 ## 账号数据
 
 账号记录以 Windows DPAPI 加密，保存在 `%LOCALAPPDATA%\CodexProfileDock`。检测到旧版 `LocalCodexSwitch` 目录时会沿用它。额度查询通过 Codex App Server 向 OpenAI 查询，侧栏只接收额度数据。请勿转发 `auth.json`、`.dpapi` 文件或账号备份。
+
+[macOS guide](README.macOS.md) · [Security update / 安全更新](SECURITY.md)

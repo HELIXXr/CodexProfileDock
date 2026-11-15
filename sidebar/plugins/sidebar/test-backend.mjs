@@ -8,6 +8,10 @@ for(const name of ["","../x","中文","x".repeat(33)])assert.equal(validName(nam
 assert.throws(()=>b.prepare({action:"Switch",name:"Unknown"}));
 assert.throws(()=>b.prepare({action:"Delete",name:"Personal"}));
 await assert.rejects(b.start({ticket:"fake"}));assert.equal(calls.length,0);
+const stale=b.prepare({action:"Switch",name:"Work"});
+fs.writeFileSync(path.join(vault,"Work.dpapi"),"changed-fixture");
+await assert.rejects(b.start(stale),{message:"profile_changed"});
+assert.equal(calls.length,0);
 const ticket=b.prepare({action:"Switch",name:"Work"});const result=await b.start(ticket);
 assert.equal(result.status,"queued");assert.equal(calls.length,1);assert.equal(calls[0][3],"Work");assert.equal(b.list().busy,true);
 await assert.rejects(b.start(ticket));

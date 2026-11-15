@@ -72,8 +72,36 @@ try {
         exit 0
     }
 
+    # Validate the signed release before installing any executable content.
+    & $node.Source (Join-Path $PSScriptRoot 'verify-package.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'Profile Dock package verification failed.' }
+    . (Join-Path $PSScriptRoot 'plugins\sidebar\scripts\Vault-Security.ps1')
+    $managed = Join-Path $env:LOCALAPPDATA 'CodexProfileDockInstall'
+    Protect-DockDirectory $managed -AllowSandboxRead
+    $installRoot = Join-Path $managed '0.9.1'
+    Protect-DockDirectory $installRoot -AllowSandboxRead
+    $manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'release-manifest.json') -Raw | ConvertFrom-Json
+    foreach ($entry in $manifest.files) {
+        $destination = Join-Path $installRoot $entry.path
+        [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination))
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $entry.path) -Destination $destination -Force
+    }
+    foreach ($file in @('release-manifest.json','release-manifest.sig')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $installRoot $file) -Force
+    }
+    Protect-DockDirectory $installRoot -AllowSandboxRead
+    & $node.Source (Join-Path $installRoot 'verify-package.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'Installed Profile Dock integrity check failed.' }
+
+    $vault = Join-Path $env:LOCALAPPDATA 'CodexProfileDock'
+    if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch')) {
+        $vault = Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch'
+    }
+    & (Join-Path $installRoot 'plugins\sidebar\scripts\Switch-Codex.ps1') -Action UpgradeVault -Vault $vault
+    Protect-DockDirectory (Join-Path $env:USERPROFILE '.codex-profile-dock-sidebar')
+
     $registeredHere = $current -and (
-        [IO.Path]::GetFullPath($current.root).TrimEnd('\') -eq $PSScriptRoot.TrimEnd('\')
+        [IO.Path]::GetFullPath($current.root).TrimEnd('\') -eq $installRoot.TrimEnd('\')
     )
     if (!$registeredHere -and $current) {
         Invoke-DockCodex -Arguments @('plugin', 'marketplace', 'remove', $marketplace)
@@ -81,7 +109,7 @@ try {
     $added = $false
     try {
         if (!$registeredHere) {
-            Register-DockMarketplace -Root $PSScriptRoot
+            Register-DockMarketplace -Root $installRoot
             $added = $true
         }
         Invoke-DockCodex -Arguments @('plugin', 'add', $plugin)
@@ -100,7 +128,7 @@ try {
         }
         throw $installError
     }
-    Write-Host (Setup-Text 'Installed. Keep the extracted folder, fully quit and reopen Codex, and open Profile Dock from the sidebar.' '安装完成。请保留解压后的文件夹，完全退出并重开 Codex，然后在侧栏打开 Profile Dock。')
+    Write-Host (Setup-Text 'Installed in the private managed folder. Fully quit and reopen Codex, then open Profile Dock.' '已安装到私有管理目录。请完全退出并重开 Codex，然后打开 Profile Dock。')
 } catch {
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1

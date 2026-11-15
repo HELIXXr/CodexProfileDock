@@ -77,4 +77,3 @@ try {
  foreach($marker in $ready,$go){if(Test-Path -LiteralPath $marker){Remove-Item -LiteralPath $marker}}
  if(Test-OwnLock){Remove-Item -LiteralPath $lock}
 }
-

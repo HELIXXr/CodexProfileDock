@@ -19,6 +19,7 @@ if ! /usr/bin/xcode-select -p >/dev/null 2>&1; then
   exit 1
 fi
 
+"$node" "$root/verify-package.mjs"
 mkdir -p "$support/bin"
 chmod 700 "$support" "$support/bin"
 work="$(mktemp -d "$support/.install.XXXXXX")"
@@ -36,7 +37,7 @@ cp "$root/macos/mcp.json" "$root/macos/run-mcp.sh" "$plugin/"
 
 # Compile locally so the Keychain client is native to this Mac.
 if [[ ! -x "$support/bin/profile-dock-native" ]] || ! cmp -s "$root/macos/native.m" "$support/bin/native-source.m"; then
-  /usr/bin/xcrun clang -fobjc-arc -O2 -framework AppKit -framework Security \
+  /usr/bin/xcrun clang -fobjc-arc -O2 -framework AppKit -framework Security -framework LocalAuthentication \
     -o "$work/profile-dock-native" "$root/macos/native.m"
   /usr/bin/codesign --force --sign - "$work/profile-dock-native"
   chmod 700 "$work/profile-dock-native"

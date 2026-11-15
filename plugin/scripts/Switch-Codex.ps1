@@ -1,8 +1,9 @@
 # Windows PowerShell 5.1
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Save','Switch','List')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Save','Switch','List','ReadUsageAuth','Rename','UpgradeVault')][string]$Action,
     [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
+    [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$NewName,
     [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }),
     [string]$Vault = $(if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch') -PathType Container) {
         Join-Path $env:LOCALAPPDATA 'LocalCodexSwitch' # Preserve existing saved profiles.
@@ -13,6 +14,9 @@ Add-Type -AssemblyName System.Security
 $auth = Join-Path ([IO.Path]::GetFullPath($CodexHome)) 'auth.json'
 $Vault = [IO.Path]::GetFullPath($Vault)
 $scope = [Security.Cryptography.DataProtectionScope]::CurrentUser
+. (Join-Path $PSScriptRoot 'Vault-Security.ps1')
+Assert-DockPlainPath $Vault
+Assert-DockPlainPath $auth
 
 function Read-Blob([string]$Path) {
     $item = Get-Item -LiteralPath $Path
@@ -49,11 +53,11 @@ function Write-Atomic([string]$Path, [byte[]]$Bytes) {
 }
 
 function Read-Profile([string]$Path) {
-    return ,([Security.Cryptography.ProtectedData]::Unprotect((Read-Blob $Path), $null, $scope))
+    return ,(Read-DockProfile $Path)
 }
 
 function Save-Profile([string]$Path, [byte[]]$Bytes) {
-    Write-Atomic $Path ([Security.Cryptography.ProtectedData]::Protect($Bytes, $null, $scope))
+    Save-DockProfile $Path $Bytes
 }
 
 function Assert-Closed {
@@ -62,6 +66,10 @@ function Assert-Closed {
     }
 }
 
+if ($Action -eq 'UpgradeVault') {
+    Upgrade-DockVault $Vault
+    return
+}
 if ($Action -eq 'List') {
     if (Test-Path -LiteralPath $Vault -PathType Container) {
         Get-ChildItem -LiteralPath $Vault -Filter '*.dpapi' -File | Select-Object -ExpandProperty BaseName
@@ -69,11 +77,70 @@ if ($Action -eq 'List') {
     return
 }
 if (!$Name) { throw 'Supply -Name, for example Personal or Work.' }
+if ($Action -eq 'Rename') {
+    if (!$NewName -or $NewName -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$') { 'rename_invalid'; return }
+    if (!(Test-Path -LiteralPath $Vault -PathType Container)) { 'rename_missing'; return }
+    try { $renameLock = [IO.File]::Open((Join-Path $Vault '.lock'), 'OpenOrCreate', 'ReadWrite', 'None') }
+    catch [IO.IOException] { 'rename_busy'; return }
+    try {
+        $files = @(Get-ChildItem -LiteralPath $Vault -Filter '*.dpapi' -File)
+        $source = $files | Where-Object { $_.Name -ceq ($Name + '.dpapi') } | Select-Object -First 1
+        if (!$source -or ($source.Attributes -band [IO.FileAttributes]::ReparsePoint)) { 'rename_missing'; return }
+        if ($Name -ceq $NewName) { 'rename_ok'; return }
+        $target = $NewName + '.dpapi'
+        if ($files | Where-Object { $_.Name -cne $source.Name -and $_.Name -ieq $target }) {
+            'rename_exists'
+            return
+        }
+        $bytes = Read-Profile $source.FullName
+        $destination = Join-Path $Vault $target
+        if ($Name -ieq $NewName) {
+            Save-Profile $destination $bytes
+            [IO.File]::Move($source.FullName, $destination)
+        } else {
+            Save-Profile $destination $bytes
+            [IO.File]::Delete($source.FullName)
+        }
+        'rename_ok'
+    } finally { $renameLock.Dispose() }
+    return
+}
+if ($Action -eq 'ReadUsageAuth') {
+    $saved = Read-Profile (Join-Path $Vault ($Name + '.dpapi'))
+    $identity = Get-Identity $saved
+    $bytes = $saved
+    try {
+        $active = Read-Blob $auth
+        if ((Get-Identity $active) -ceq $identity) { $bytes = $active }
+    } catch {
+        # Use the saved snapshot if the active login is absent or different.
+    }
+    $data = [Text.Encoding]::UTF8.GetString($bytes).TrimStart([char]0xFEFF) | ConvertFrom-Json
+    $accountId = [string]$data.tokens.account_id
+    if (!$accountId) { throw 'The login is missing its workspace ID.' }
+
+    $codexExecutable = $null
+    foreach ($package in @(Get-AppxPackage -Name OpenAI.Codex -ErrorAction SilentlyContinue)) {
+        if (!$package.InstallLocation) { continue }
+        $candidate = Join-Path $package.InstallLocation 'app\resources\codex.exe'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $codexExecutable = $candidate
+            break
+        }
+    }
+    if (!$codexExecutable) {
+        $codexExecutable = (Get-Command codex.exe -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1).Source
+    }
+    @{accessToken=[string]$data.tokens.access_token; chatgptAccountId=$accountId;
+      codexExecutable=$codexExecutable} | ConvertTo-Json -Compress
+    return
+}
 Assert-Closed
 if (!(Test-Path -LiteralPath $auth -PathType Leaf)) {
     throw 'No auth.json in the selected Codex home. Sign in normally and check the credential storage mode.'
 }
-[IO.Directory]::CreateDirectory($Vault) | Out-Null
+Protect-DockDirectory $Vault
 $profile = Join-Path $Vault ($Name + '.dpapi')
 # Serialize operations even if the same vault is used from different terminals.
 $lock = [IO.File]::Open((Join-Path $Vault '.lock'), 'OpenOrCreate', 'ReadWrite', 'None')

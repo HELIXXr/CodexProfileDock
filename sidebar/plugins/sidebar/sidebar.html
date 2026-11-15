@@ -137,6 +137,8 @@ const messages={
  profiles_unreadable:["Could not read the saved accounts.","无法读取账号别名。"],
  alias_invalid:["Use 1–32 letters, digits, hyphens or underscores. Start with a letter or digit.","请输入 1–32 位英文、数字、短横线或下划线，以字母或数字开头。"],
  rename_invalid:["Use 1–32 letters, digits, hyphens or underscores. Start with a letter or digit and avoid reserved Windows names.","请输入 1–32 位字母、数字、短横线或下划线，以字母或数字开头，并避开 Windows 保留名称。"],
+ profile_changed:["The saved account changed or its alias integrity check failed. Refresh and verify the account.","已保存账号发生变化或别名校验失败，请刷新并核对账号。"],
+ usage_user_presence_required:["Select Refresh to authorize Keychain access with macOS.","请点击刷新，通过 macOS 身份验证后查询额度。"],
  profile_missing:["This saved account is missing. Refresh the list.","所选账号不存在，请刷新列表。"],
  rename_missing:["This saved account is missing. Refresh the list.","所选账号不存在，请刷新列表。"],
  rename_exists:["Another account already uses that alias.","此别名已被其他账号使用。"],
@@ -270,7 +272,7 @@ function controls(){
  $("rename-save").disabled=renameBusy||!renaming||$("rename-alias").value.trim()===renaming;
 }
 async function tool(name,args={}){
- const r=await request("tools/call",{name,arguments:args},name==="rename_profile"?22000:15000);
+ const r=await request("tools/call",{name,arguments:args},(name==="rename_profile"||name==="refresh_usage")?90000:15000);
  if(r.isError){
   const failure=r._meta?.panelError;
   throw Object.assign(Error(failure?.code??"operation_failed"),{reason:failure?.reason});
@@ -479,7 +481,7 @@ $("yes").onclick=async()=>{
 applyLocale(document.documentElement.lang);
 (async()=>{
  try{
-  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.9.0-beta.1"},appCapabilities:{}});
+  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.9.1"},appCapabilities:{}});
   applyLocale(initialized?.hostContext?.locale||document.documentElement.lang);
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);

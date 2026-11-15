@@ -3,7 +3,7 @@ import {setTimeout as delay} from "node:timers/promises";
 import {fileURLToPath} from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import {randomUUID} from "node:crypto";
+import {randomUUID,createHash} from "node:crypto";
 import {readProfileUsage} from "./usage.mjs";
 import {createMacPlatform,launchMacWorker,macPaths} from "./macos.mjs";
 export const validName = n => typeof n==="string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(n);
@@ -38,6 +38,12 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       if(mac)return mac.vault.names().sort();
       return fs.readdirSync(vault,{withFileTypes:true}).filter(e=>e.isFile() && e.name.endsWith(".dpapi") && validName(e.name.slice(0,-6))).map(e=>e.name.slice(0,-6)).sort(); }
     catch(e){if(e.code==="ENOENT")return [];throw new PanelError("profiles_unreadable");}
+  }
+  function profileDigest(name){
+    const file=path.join(vault,name+(mac?".keychain":".dpapi"));
+    const stat=fs.lstatSync(file);
+    if(!stat.isFile()||stat.isSymbolicLink()||stat.size>2*1024*1024)throw new PanelError("profile_changed");
+    return createHash("sha256").update(fs.readFileSync(file)).digest("hex");
   }
   function profileRef(name){
     try{
@@ -125,7 +131,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       pending.set(ticket,{action:"Rename",name,newName,expires:Date.now()+120000});
       const {id}=await this.start({ticket});
       const receipt=path.join(state,id+".rename-result");
-      const deadline=Date.now()+5000;
+      const deadline=Date.now()+(mac?75000:5000);
       try{
         while(Date.now()<deadline){
           let result;
@@ -144,7 +150,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       if(!["Save","Switch"].includes(action)||!validName(name))throw new PanelError("alias_invalid");
       if(action==="Switch"&&!profiles().includes(name))throw new PanelError("profile_missing");
       pending.clear();
-      const ticket=randomUUID();pending.set(ticket,{action,name,expires:Date.now()+120000});
+      const ticket=randomUUID();pending.set(ticket,{action,name,profileDigest:action==="Switch"?profileDigest(name):null,expires:Date.now()+120000});
       return {ticket,action,name};
     },
     probe(){
@@ -155,6 +161,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       const intent=pending.get(ticket);pending.delete(ticket);
       if(!intent||intent.expires<Date.now())throw new PanelError("ticket_expired");
       if(intent.action==="Switch"&&!profiles().includes(intent.name))throw new PanelError("profile_missing");
+      if(intent.action==="Switch"&&profileDigest(intent.name)!==intent.profileDigest)throw new PanelError("profile_changed");
       fs.mkdirSync(state,{recursive:true,mode:0o700});
       inspectOperation();
       let handle;
@@ -199,6 +206,3 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
     }
   };
 }
-
-
-

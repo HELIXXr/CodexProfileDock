@@ -1,0 +1,4 @@
+sidebar/** text eol=lf
+sidebar/**/*.png -text
+plugin/scripts/*.ps1 text eol=lf
+.github/workflows/*.yml text eol=lf

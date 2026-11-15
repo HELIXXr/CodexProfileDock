@@ -6,31 +6,38 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 
 const root=fs.mkdtempSync(path.join(os.tmpdir(),"dock-rename-"));
-const vault=path.join(root,"vault");
-const home=path.join(root,"absent-codex-home");
+const vault=path.join(root,"vault"),home=path.join(root,"absent-codex-home");
 const exe=path.join(process.env.SystemRoot,"System32","WindowsPowerShell","v1.0","powershell.exe");
 const script=fileURLToPath(new URL("./scripts/Switch-Codex.ps1",import.meta.url));
-const rename=(name,newName)=>execFileSync(exe,["-NoProfile","-NonInteractive","-File",script,
- "-Action","Rename","-Name",name,"-NewName",newName,"-Vault",vault,"-CodexHome",home],{encoding:"utf8",windowsHide:true}).trim();
-const files=()=>fs.readdirSync(vault).filter(name=>name.endsWith(".dpapi"));
-const source=Buffer.from([17,0,44,91,255]);
+const security=fileURLToPath(new URL("./scripts/Vault-Security.ps1",import.meta.url));
 fs.mkdirSync(vault);
-fs.writeFileSync(path.join(vault,"Personal.dpapi"),source);
-fs.writeFileSync(path.join(vault,"Work.dpapi"),"another backup");
+const initializer=path.join(root,"fixture.ps1");
+fs.writeFileSync(initializer,String.raw`
+$ErrorActionPreference='Stop'
+Add-Type -AssemblyName System.Security
+$scope=[Security.Cryptography.DataProtectionScope]::CurrentUser
+function Read-Blob($p){return ,([IO.File]::ReadAllBytes($p))}
+function Write-Atomic($p,[byte[]]$b){[IO.File]::WriteAllBytes($p,$b)}
+function Get-Identity($b){'fixture'}
+. $args[0]
+$payload=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('{"iss":"fixture","sub":"fixture"}')).TrimEnd('=').Replace('+','-').Replace('/','_')
+foreach($name in @('Personal','Work')){
+ $auth=@{auth_mode='chatgpt';tokens=@{id_token="fixture.$payload.fixture";access_token='fixture-access';refresh_token='fixture-refresh';account_id=$name}}|ConvertTo-Json -Compress
+ Save-DockProfile (Join-Path $args[1] ($name+'.dpapi')) ([Text.Encoding]::UTF8.GetBytes($auth))
+}
+`);
+const rename=(name,newName)=>execFileSync(exe,["-NoProfile","-ExecutionPolicy","RemoteSigned","-NonInteractive","-File",script,
+ "-Action","Rename","-Name",name,"-NewName",newName,"-Vault",vault,"-CodexHome",home],{encoding:"utf8",windowsHide:true}).trim();
 try{
+ execFileSync(exe,["-NoProfile","-ExecutionPolicy","RemoteSigned","-File",initializer,security,vault],{windowsHide:true});
+ const original=fs.readFileSync(path.join(vault,"Personal.dpapi"));
  assert.equal(rename("Personal","work"),"rename_exists");
- assert.deepEqual(fs.readFileSync(path.join(vault,"Personal.dpapi")),source);
- assert.equal(fs.readFileSync(path.join(vault,"Work.dpapi"),"utf8"),"another backup");
+ assert.deepEqual(fs.readFileSync(path.join(vault,"Personal.dpapi")),original);
  assert.equal(rename("Personal","personal"),"rename_ok");
- assert.ok(files().includes("personal.dpapi"));
+ assert.ok(fs.readdirSync(vault).includes("personal.dpapi"));
  assert.equal(rename("Personal","Missing"),"rename_missing");
  assert.equal(rename("personal","Archive"),"rename_ok");
- assert.deepEqual(files().sort(),["Archive.dpapi","Work.dpapi"]);
- assert.deepEqual(fs.readFileSync(path.join(vault,"Archive.dpapi")),source);
+ assert.notDeepEqual(fs.readFileSync(path.join(vault,"Archive.dpapi")),original);
  assert.equal(fs.existsSync(home),false);
- console.log("PASS: physical profile rename, case-only rename, conflict protection and unchanged credential bytes");
-}finally{
- for(const name of fs.readdirSync(vault))fs.unlinkSync(path.join(vault,name));
- fs.rmdirSync(vault);
- fs.rmdirSync(root);
-}
+ console.log("PASS account rename rebinds the encrypted alias, handles case-only changes, and rejects conflicts");
+}finally{fs.rmSync(root,{recursive:true,force:true});}

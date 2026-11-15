@@ -45,6 +45,11 @@ try {
   fs.writeFileSync(auth, second);
   await assert.rejects(run("Save", "archive"), {message:"mac_alias_taken"});
   await run("Save", "Work");
+  const before=fs.readFileSync(path.join(root,"profiles","Archive.keychain"));
+  const other=fs.readFileSync(path.join(root,"profiles","Work.keychain"));
+  fs.writeFileSync(path.join(root,"profiles","Archive.keychain"),other);
+  await assert.rejects(vault.read("Archive"),{message:"profile_changed"});
+  fs.writeFileSync(path.join(root,"profiles","Archive.keychain"),before);
   fs.writeFileSync(auth, updated);
   allowWrite = false;
   await assert.rejects(run("Switch", "Work"), {message:"mac_codex_running"});
