@@ -10,7 +10,7 @@
 <p align="center">从 Codex 侧栏切换 ChatGPT 账号，查看剩余额度和重置时间。</p>
 <p align="center">
   <a href="https://github.com/HELIXXr/CodexProfileDock/releases/latest"><strong>下载 Windows 安装包</strong></a>
-  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.0-beta.1"><strong>下载 macOS Beta</strong></a>
+  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.1"><strong>下载 macOS Beta</strong></a>
   · <a href="README.en.md">English</a>
   · <a href="#安装">安装指南</a>
 </p>
@@ -45,10 +45,10 @@
 ### macOS Beta
 
 1. 准备 Codex 桌面应用、Codex CLI、Node.js 22 或更高版本，以及 Apple 命令行工具。缺少命令行工具时，在终端运行 `xcode-select --install`。
-2. 下载 [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.0-beta.1) 并完整解压。运行 `sidebar/macos/Install-Profile-Dock.command`。
+2. 下载 [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.1) 并完整解压。运行 `sidebar/macos/Install-Profile-Dock.command`。
 3. 在 Codex 用户配置 `~/.codex/config.toml` 的顶层设置 `cli_auth_credentials_store = "file"`，然后完全退出并重开 Codex。必要时重新登录 ChatGPT，再打开侧栏里的 **Profile Dock**。
 
-安装、卸载、钥匙串读写和后台启动已通过 Apple Silicon 与 Intel 的 macOS 15 测试。真实账号的桌面切换仍待实机验证。[macOS 完整指南](https://github.com/HELIXXr/CodexProfileDock/blob/v0.9.0-beta.1/README.macOS.md) · [测试结果](https://github.com/HELIXXr/CodexProfileDock/actions/runs/43135015083)
+安装、卸载、钥匙串读写和后台启动已通过 Apple Silicon 与 Intel 的 macOS 15 测试。真实账号的桌面切换仍待实机验证。[macOS 完整指南](https://github.com/HELIXXr/CodexProfileDock/blob/v0.9.1/sidebar/README.macOS.md) · [测试结果](https://github.com/HELIXXr/CodexProfileDock/actions/runs/43135015083)
 
 ## 保存和切换账号
 
@@ -65,3 +65,5 @@
 [Windows 完整安装与故障排查](sidebar/README.md) · [旧版独立窗口说明](docs/standalone.zh-CN.md)
 
 <sub>非官方项目，与 OpenAI 无隶属关系。</sub>
+
+[Security update / 安全更新](sidebar/SECURITY.md)
