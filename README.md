@@ -10,6 +10,7 @@
 <p align="center">从 Codex 侧栏切换 ChatGPT 账号，查看剩余额度和重置时间。</p>
 <p align="center">
   <a href="https://github.com/HELIXXr/CodexProfileDock/releases/latest"><strong>下载 Windows 安装包</strong></a>
+  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.0-beta.1"><strong>下载 macOS Beta</strong></a>
   · <a href="README.en.md">English</a>
   · <a href="#安装">安装指南</a>
 </p>
@@ -29,6 +30,8 @@
 
 ## 安装
 
+### Windows
+
 需要 **Windows 上的官方 Codex 桌面应用**（已并入 ChatGPT 桌面应用）、**Codex CLI** 和 **Node.js 22 或更高版本**。
 
 已验证 **x64 Microsoft Store 安装**。通过官方网页安装器、`winget` 或离线 MSIX 安装时，只要 Windows 注册了 `OpenAI.Codex` 应用包，且开始菜单入口可用，按现有检测逻辑应可使用。离线 MSIX 和 Arm64 尚未完成端到端验证。CLI 和 IDE 扩展不能作为侧栏宿主。[OpenAI Windows 部署指南](https://learn.chatgpt.com/docs/enterprise/windows-deployment)
@@ -39,6 +42,14 @@
 
 升级时运行新版安装脚本即可。卸载时双击 `Uninstall-Profile-Dock.cmd`，然后重开 Codex。已保存的账号记录保留在本机。
 
+### macOS Beta
+
+1. 准备 Codex 桌面应用、Codex CLI、Node.js 22 或更高版本，以及 Apple 命令行工具。缺少命令行工具时，在终端运行 `xcode-select --install`。
+2. 下载 [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.0-beta.1) 并完整解压。运行 `sidebar/macos/Install-Profile-Dock.command`。
+3. 在 Codex 用户配置 `~/.codex/config.toml` 的顶层设置 `cli_auth_credentials_store = "file"`，然后完全退出并重开 Codex。必要时重新登录 ChatGPT，再打开侧栏里的 **Profile Dock**。
+
+安装、卸载、钥匙串读写和后台启动已通过 Apple Silicon 与 Intel 的 macOS 15 测试。真实账号的桌面切换仍待实机验证。[macOS 完整指南](https://github.com/HELIXXr/CodexProfileDock/blob/v0.9.0-beta.1/README.macOS.md) · [测试结果](https://github.com/HELIXXr/CodexProfileDock/actions/runs/43135015083)
+
 ## 保存和切换账号
 
 1. 在 Codex 正常登录第一个账号。在 Profile Dock 输入别名，例如 `Personal`，点击「保存账号」并确认。
@@ -47,10 +58,10 @@
 
 ## 兼容性和账号数据
 
-- 支持 Codex 将 ChatGPT 登录保存到 `auth.json` 的方式。使用系统凭据库或 API Key 登录时无法保存账号。聊天数据由 Codex 管理。
-- 账号记录使用 Windows DPAPI 加密，存放在 `%LOCALAPPDATA%\CodexProfileDock`，或沿用旧版 `LocalCodexSwitch` 目录。请妥善保管 `auth.json`、`.dpapi` 文件和私人备份。
+- 切换功能适用于 Codex 将当前 ChatGPT 登录存放在 `auth.json` 的情况。如果 Codex 将当前登录存放在系统凭据库，或使用 API Key 登录，则不适用。聊天数据由 Codex 管理。
+- Windows 版使用 DPAPI 加密保存的账号快照，存放在 `%LOCALAPPDATA%\CodexProfileDock` 或已有的 `LocalCodexSwitch` 目录。macOS 版将快照保存在系统钥匙串。请妥善保管 `auth.json`、`.dpapi` 文件和私人备份。
 - 额度由 Codex App Server 向 OpenAI 查询。侧栏只接收额度数据。
 
-[完整安装与故障排查](sidebar/README.md) · [旧版独立窗口说明](docs/standalone.zh-CN.md)
+[Windows 完整安装与故障排查](sidebar/README.md) · [旧版独立窗口说明](docs/standalone.zh-CN.md)
 
 <sub>非官方项目，与 OpenAI 无隶属关系。</sub>
