@@ -1,4 +1,4 @@
-# Codex Profile Dock 0.10.0 · Windows 侧栏版
+# Codex Profile Dock 0.10.1 · Windows 侧栏版
 
 [English installation and usage guide](README.en.md)
 
@@ -26,7 +26,7 @@
 
 别名支持 1–32 个英文字母、数字、短横线或下划线，并以字母或数字开头。
 
-## 0.10.0 账号管理
+## 0.10.1 账号管理
 
 - 当前账号会显示标签，避免重复切换；切换后核对目标登录，未匹配时给出提示。
 - 删除前需确认，只移除保存记录、对应的迁移副本及额度缓存，当前 Codex 登录不变。独立私人备份仍保留。

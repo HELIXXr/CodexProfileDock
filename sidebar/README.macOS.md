@@ -1,4 +1,4 @@
-# Profile Dock for macOS · 0.10.0
+# Profile Dock for macOS · 0.10.1
 
 [English](#english) · [简体中文](#简体中文)
 
@@ -45,7 +45,7 @@ Run `macos/Uninstall-Profile-Dock.command` and reopen Codex to uninstall. Saved 
 
 See SECURITY.md for the device authentication requirement and security update details.
 
-## 0.10.0 local panel state / 本机侧栏状态
+## 0.10.1 local panel state / 本机侧栏状态
 
 Quota percentages, reset times, query timestamps and alias ordering are cached locally. They contain no sign-in tokens. On macOS, a private identity digest and token expiry hint allow the panel to identify the active account without opening Keychain at startup. Manual quota queries share one authenticated Keychain session per batch (maximum two minutes).
 

@@ -228,7 +228,7 @@ export async function readMacAuthMode(command, codexHome) {
   const send = (method, id, params = {}) => child.stdin.write(JSON.stringify({ method, id, params }) + "\n");
   let mode, requirement, readConfig = false, readRequirements = false;
   try {
-    send("initialize", 1, { clientInfo: { name: "profile_dock", version: "0.10.0" } });
+    send("initialize", 1, { clientInfo: { name: "profile_dock", version: "0.10.1" } });
     for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
       const message = JSON.parse(line);
       if (![1, 2, 3].includes(message.id)) continue;

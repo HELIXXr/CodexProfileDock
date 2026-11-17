@@ -222,7 +222,6 @@ const messages={
  probe_failed:["Background check failed","后台自检未通过"],
  probe_pending:["Checking background…","正在自动测试后台…"],
  startup_refreshing:["{check} · Refreshing quotas…","{check} · 正在刷新额度…"],
- startup_complete:["{check} · Quotas refreshed for {complete}/{total} accounts","{check} · 额度已刷新 {complete}/{total} 个账号"],
  startup_skipped:["Startup check skipped while an account action was running.","启动自检已跳过，账号操作正在进行。"],
  startup_interrupted:["The startup check or quota refresh was interrupted. You can retry manually.","启动自检或额度刷新已中断，可手动重试。"],
  switch:["Switch","切换"],
@@ -427,7 +426,7 @@ function showStartup(startup){
  const probe=t(startup.probe==="passed"?"probe_passed":startup.probe==="failed"?"probe_failed":"probe_pending");
  const messages={
   running:startup.probe==="pending"?probe:t("startup_refreshing",{check:probe}),
-  complete:startup.total?t("startup_complete",{check:probe,complete:startup.complete,total:startup.total}):probe,
+  complete:probe,
   skipped:t("startup_skipped"),
   interrupted:t("startup_interrupted")
  };
@@ -575,7 +574,7 @@ $("yes").onclick=async()=>{
 applyLocale(document.documentElement.lang);
 (async()=>{
  try{
-  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.10.0"},appCapabilities:{}});
+  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.10.1"},appCapabilities:{}});
   applyLocale(initialized?.hostContext?.locale||document.documentElement.lang);
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);
