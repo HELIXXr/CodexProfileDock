@@ -1,7 +1,7 @@
 # Windows PowerShell 5.1
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Save','Switch','List','ReadUsageAuth','Rename','UpgradeVault')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Save','Switch','List','ReadUsageAuth','Rename','UpgradeVault','Info','Delete')][string]$Action,
     [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$Name,
     [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}\z')][string]$NewName,
     [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }),
@@ -70,6 +70,36 @@ if ($Action -eq 'UpgradeVault') {
     Upgrade-DockVault $Vault
     return
 }
+function Get-DockTokenState([byte[]]$Bytes) {
+    try {
+        $data=[Text.Encoding]::UTF8.GetString($Bytes)|ConvertFrom-Json
+        $payload=([string]$data.tokens.access_token).Split('.')[1].Replace('-','+').Replace('_','/')
+        $payload+='='*((4-$payload.Length%4)%4)
+        $claims=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload))|ConvertFrom-Json
+        if($claims.exp -and [double]$claims.exp -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()){return 'expired'}
+    } catch {}
+    return 'unchecked'
+}
+if ($Action -eq 'Info') {
+    $activeIdentity=$null;$activeBytes=$null
+    try {$activeBytes=Read-Blob $auth;$activeIdentity=Get-Identity $activeBytes} catch {}
+    $current=@();$states=@{}
+    if(Test-Path -LiteralPath $Vault){
+      foreach($entry in Get-ChildItem -LiteralPath $Vault -File -Filter '*.dpapi'){
+        try {
+          $bytes=Read-Profile $entry.FullName
+          if($activeIdentity -and (Get-Identity $bytes) -ceq $activeIdentity){
+            $current+=$entry.BaseName
+            $bytes=$activeBytes
+          }
+          $states[$entry.BaseName]=Get-DockTokenState $bytes
+        } catch {$states[$entry.BaseName]='unreadable'}
+      }
+    }
+    @{current=@($current);activeState=$(if(!$activeIdentity){'unknown'}elseif($current.Count){'saved'}else{'unsaved'});loginStates=$states}|ConvertTo-Json -Compress -Depth 4
+    return
+}
+
 if ($Action -eq 'List') {
     if (Test-Path -LiteralPath $Vault -PathType Container) {
         Get-ChildItem -LiteralPath $Vault -Filter '*.dpapi' -File | Select-Object -ExpandProperty BaseName
@@ -77,6 +107,18 @@ if ($Action -eq 'List') {
     return
 }
 if (!$Name) { throw 'Supply -Name, for example Personal or Work.' }
+if ($Action -eq 'Delete') {
+    Protect-DockDirectory $Vault
+    $guard=[IO.File]::Open((Join-Path $Vault '.lock'),'OpenOrCreate','ReadWrite','None')
+    try {
+        $target=Join-Path $Vault ($Name+'.dpapi')
+        [void](Read-Profile $target)
+        [IO.File]::Delete($target)
+        $old=$target+'.pre-security-backup'
+        if(Test-Path -LiteralPath $old){[IO.File]::Delete($old)}
+    } finally {$guard.Dispose()}
+    return
+}
 if ($Action -eq 'Rename') {
     if (!$NewName -or $NewName -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$') { 'rename_invalid'; return }
     if (!(Test-Path -LiteralPath $Vault -PathType Container)) { 'rename_missing'; return }

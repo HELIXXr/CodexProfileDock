@@ -6,7 +6,8 @@ const calls=[];const b=createBackend({local,userProfile:local,launch:async args=
 assert.deepEqual(b.list().profiles,["Personal","Work"]);
 for(const name of ["","../x","中文","x".repeat(33)])assert.equal(validName(name),false);
 assert.throws(()=>b.prepare({action:"Switch",name:"Unknown"}));
-assert.throws(()=>b.prepare({action:"Delete",name:"Personal"}));
+assert.throws(()=>b.prepare({action:"Delete",name:"Missing"}));
+assert.equal(b.prepare({action:"Delete",name:"Personal"}).action,"Delete");
 await assert.rejects(b.start({ticket:"fake"}));assert.equal(calls.length,0);
 const stale=b.prepare({action:"Switch",name:"Work"});
 fs.writeFileSync(path.join(vault,"Work.dpapi"),"changed-fixture");

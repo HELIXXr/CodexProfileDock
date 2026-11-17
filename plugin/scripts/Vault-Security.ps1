@@ -62,7 +62,13 @@ function Protect-DockDirectory([string]$Path, [switch]$AllowSandboxRead) {
         if ($child.Attributes -band [IO.FileAttributes]::ReparsePoint) {
             throw 'Refusing a reparse point inside a Profile Dock directory.'
         }
-        $inherited = Get-Acl -LiteralPath $child.FullName
+        $inherited = if ($PSVersionTable.PSEdition -eq 'Core') {
+            Get-Acl -LiteralPath $child.FullName
+        } elseif ($child.PSIsContainer) {
+            [IO.Directory]::GetAccessControl($child.FullName)
+        } else {
+            [IO.File]::GetAccessControl($child.FullName)
+        }
         $inherited.SetAccessRuleProtection($true, $false)
         foreach ($entry in @($inherited.Access)) { [void]$inherited.RemoveAccessRuleSpecific($entry) }
         $inherited.SetAccessRuleProtection($false, $false)

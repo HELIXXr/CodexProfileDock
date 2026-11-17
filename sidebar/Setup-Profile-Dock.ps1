@@ -78,7 +78,7 @@ try {
     . (Join-Path $PSScriptRoot 'plugins\sidebar\scripts\Vault-Security.ps1')
     $managed = Join-Path $env:LOCALAPPDATA 'CodexProfileDockInstall'
     Protect-DockDirectory $managed -AllowSandboxRead
-    $installRoot = Join-Path $managed '0.9.1'
+    $installRoot = Join-Path $managed '0.10.0'
     Protect-DockDirectory $installRoot -AllowSandboxRead
     $manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'release-manifest.json') -Raw | ConvertFrom-Json
     foreach ($entry in $manifest.files) {

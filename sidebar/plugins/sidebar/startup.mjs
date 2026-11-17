@@ -79,7 +79,7 @@ export function createStartup({state,identify=desktopSession,list,probe,query}){
     fs.mkdirSync(state,{recursive:true,mode:0o700});
     file=path.join(state,"startup-"+key+".json");
     const data={pid:process.pid,status:"running",probe:"pending",total:0,
-      usage:Object.create(null),errors:Object.create(null)};
+      usage:Object.create(null),errors:Object.create(null),errorTimes:Object.create(null)};
     try{fs.writeFileSync(file,JSON.stringify(data),{flag:"wx"});}
     catch(error){if(error.code==="EEXIST")return;throw error;}
     const temp=file+"."+process.pid+".tmp";
@@ -101,7 +101,7 @@ export function createStartup({state,identify=desktopSession,list,probe,query}){
       for(const name of current.profiles){
         if(list().busy){data.status="interrupted";return;}
         try{data.usage[name]=await query(name);}
-        catch(error){data.errors[name]=/^usage_[a-z_]+$/.test(error.message)?error.message:"usage_unavailable";}
+        catch(error){data.errors[name]=/^usage_[a-z_]+$/.test(error.message)?error.message:"usage_unavailable";data.errorTimes[name]=new Date().toISOString();}
         publish();
       }
       data.status="complete";

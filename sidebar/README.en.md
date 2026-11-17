@@ -1,4 +1,4 @@
-# Codex Profile Dock 0.9.1 for Windows
+# Codex Profile Dock 0.10.0 for Windows
 
 [中文安装和使用说明](README.md)
 
@@ -22,9 +22,16 @@ Tested with the **x64 Microsoft Store installation**. Installs from the official
 1. Sign in to your first account normally in Codex. In Profile Dock, enter an alias such as `Personal`, select **Save account**, and confirm. Codex will close and reopen.
 2. Sign in to your second account normally and save it under a different alias, such as `Work`.
 3. To switch, save your work and wait for running tasks to finish. Select **Switch** next to the target account and confirm. After Codex reopens, verify the active account.
-4. Select **Refresh** to check quota and reset times. The ring shows the lowest remaining percentage across quota windows. Select **Rename** to change a local alias.
+4. Select **Refresh** to check quota and reset times. The ring shows the lowest remaining percentage across quota windows. Use the **⋯** menu to refresh one account, rename, move up/down, or delete its saved record.
 
 Aliases can contain 1–32 ASCII letters, digits, hyphens, or underscores. Start with a letter or digit.
+
+## Account management in 0.10.0
+
+- The active account is labeled and its Switch button is disabled. After reopening, the panel checks the target sign-in and reports a mismatch.
+- Deletion requires confirmation and removes the saved record, its migration copy, and quota cache. The active Codex sign-in and independent private backups stay intact.
+- Ordering and the last successful quota result persist in the local panel state directory. Failed queries preserve earlier results; select **Retry failed** to retry them. Quotas show a reset countdown and last-checked time.
+- Token-age hints cannot guarantee that an account or refresh token is still valid.
 
 ## Uninstall
 

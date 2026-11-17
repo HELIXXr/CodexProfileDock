@@ -2,7 +2,7 @@ name: macOS verification
 
 on:
   push:
-    branches: [macos-beta, security-hardening]
+    branches: [main, macos-beta, security-hardening, account-management]
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: '24'
       - name: Check the account transaction
-        run: node sidebar/plugins/sidebar/test-macos.mjs
+        run: |
+          node sidebar/plugins/sidebar/test-macos.mjs
+          node sidebar/plugins/sidebar/test-panel-store.mjs
       - name: Check the installer and native Keychain worker
         shell: bash
         run: |

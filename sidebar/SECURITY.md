@@ -1,4 +1,4 @@
-# Profile Dock 0.9.1 security update
+# Profile Dock 0.10.0 security update
 
 - Windows stores account records and the managed installation under a private ACL for the current user, SYSTEM, and administrators. The installed code allows the Codex sandbox group read/execute access only.
 - Saved records bind the alias inside the encrypted envelope. Existing records are adopted during installation after securing the directory. Each original ciphertext is preserved in a private migration backup. This cannot detect an alias that was already swapped before the upgrade.
@@ -15,3 +15,9 @@
 - macOS 钥匙串助手取消可直接调用的原始读取命令。通过私有管道建立会话，访问账号前由 macOS 验证设备所有者身份，会话授权最多持续两分钟。启动时跳过钥匙串额度读取，手动刷新时可能出现系统验证窗口。
 - macOS 的账号别名同时绑定到钥匙串内容。旧记录仅在用户授权读取后升级。
 - 此方案无法隔离已取得当前用户完整权限的恶意程序或管理员。
+
+## 0.10.0 local panel state / 本机侧栏状态
+
+Quota percentages, reset times, query timestamps and alias ordering are cached locally. They contain no sign-in tokens. On macOS, a private identity digest and token expiry hint allow the panel to identify the active account without opening Keychain at startup. Manual quota queries share one authenticated Keychain session per batch (maximum two minutes).
+
+额度百分比、重置时间、查询时间及别名排序缓存在本机，不含登录令牌。macOS 另存私有身份摘要和令牌到期提示，以便启动时无需打开钥匙串即可核对当前账号。一批手动额度查询共用一次钥匙串授权会话，最多持续两分钟。

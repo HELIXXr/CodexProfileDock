@@ -24,8 +24,9 @@ function ownsLock() {
   try { return fs.readFileSync(lock, "utf8") === id; } catch { return false; }
 }
 
+let stage="startup";
 function publish(status, reason) {
-  writePrivateAtomic(latest, JSON.stringify({ id, kind: action, status, reason, pid: process.pid, updated: new Date().toISOString() }));
+  writePrivateAtomic(latest, JSON.stringify({ id, kind: action, name, stage, status, reason, pid: process.pid, updated: new Date().toISOString() }));
   if (action === "Rename" && ["failed", "renamed"].includes(status)) {
     writePrivateAtomic(files(".rename-result"), JSON.stringify({ id, status, reason }));
   }
@@ -48,7 +49,7 @@ try {
     await platform.vault.rename(name, newName);
     publish("renamed");
   } else {
-    publish(await platform.run(action, name));
+    publish(await platform.run(action, name,next=>{stage=next;publish("running");}));
   }
 } catch (error) {
   if (ownsLock()) publish("failed", knownErrors.has(error.message) ? error.message : "operation");

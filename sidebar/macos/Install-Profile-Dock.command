@@ -30,7 +30,7 @@ plugin="$work/marketplace/plugins/sidebar"
 mkdir -p "$plugin" "$work/marketplace/.agents/plugins"
 cp "$root/.agents/plugins/marketplace.json" "$work/marketplace/.agents/plugins/"
 cp -R "$source_dir/assets" "$plugin/"
-for file in backend.mjs macos.mjs macos-worker.mjs plugin.json server.mjs sidebar.html startup.mjs startup-worker.mjs usage.mjs; do
+for file in backend.mjs panel-store.mjs macos.mjs macos-worker.mjs plugin.json server.mjs sidebar.html startup.mjs startup-worker.mjs usage.mjs; do
   cp "$source_dir/$file" "$plugin/"
 done
 cp "$root/macos/mcp.json" "$root/macos/run-mcp.sh" "$plugin/"

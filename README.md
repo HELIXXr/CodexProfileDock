@@ -10,7 +10,7 @@
 <p align="center">从 Codex 侧栏切换 ChatGPT 账号，查看剩余额度和重置时间。</p>
 <p align="center">
   <a href="https://github.com/HELIXXr/CodexProfileDock/releases/latest"><strong>下载 Windows 安装包</strong></a>
-  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.1"><strong>下载 macOS Beta</strong></a>
+  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.10.0"><strong>下载 macOS Beta</strong></a>
   · <a href="README.en.md">English</a>
   · <a href="#安装">安装指南</a>
 </p>
@@ -26,7 +26,9 @@
 | --- | --- |
 | **保存与切换** | 给当前登录保存一个别名。确认切换后，插件会请求 Codex 正常退出，更新本机登录状态，再重开 Codex。 |
 | **查看额度** | 查看各账号的剩余百分比和重置时间。账号旁的圆环显示各额度窗口中最低的剩余百分比。 |
-| **重命名与界面语言** | 在侧栏重命名已保存的账号。Codex 使用中文时显示简体中文，其余语言显示英文。 |
+| **账号管理** | 标识当前登录；通过「⋯」菜单重命名、排序、删除保存记录或单独刷新。删除记录不会退出当前登录。 |
+| **查询与核对** | 额度缓存在本机；查询失败保留上次结果，可重试失败项。显示重置倒计时，切换后核对目标账号。 |
+| **界面语言** | Codex 使用中文时显示简体中文，其余语言显示英文。 |
 
 ## 安装
 
@@ -45,10 +47,10 @@
 ### macOS Beta
 
 1. 准备 Codex 桌面应用、Codex CLI、Node.js 22 或更高版本，以及 Apple 命令行工具。缺少命令行工具时，在终端运行 `xcode-select --install`。
-2. 下载 [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.9.1) 并完整解压。运行 `sidebar/macos/Install-Profile-Dock.command`。
+2. 下载 [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.10.0) 并完整解压。运行 `sidebar/macos/Install-Profile-Dock.command`。
 3. 在 Codex 用户配置 `~/.codex/config.toml` 的顶层设置 `cli_auth_credentials_store = "file"`，然后完全退出并重开 Codex。必要时重新登录 ChatGPT，再打开侧栏里的 **Profile Dock**。
 
-安装、卸载、钥匙串读写和后台启动已通过 Apple Silicon 与 Intel 的 macOS 15 测试。真实账号的桌面切换仍待实机验证。[macOS 完整指南](https://github.com/HELIXXr/CodexProfileDock/blob/v0.9.1/sidebar/README.macOS.md) · [测试结果](https://github.com/HELIXXr/CodexProfileDock/actions/runs/43135015083)
+安装、卸载、钥匙串读写和后台启动已通过 Apple Silicon 与 Intel 的 macOS 15 测试。真实账号的桌面切换仍待实机验证。[macOS 完整指南](https://github.com/HELIXXr/CodexProfileDock/blob/v0.10.0/sidebar/README.macOS.md) · [持续验证](https://github.com/HELIXXr/CodexProfileDock/actions/workflows/macos.yml)
 
 ## 保存和切换账号
 

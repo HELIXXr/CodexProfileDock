@@ -1,4 +1,6 @@
-import {spawn} from "node:child_process";
+import {spawn,execFile} from "node:child_process";
+import {promisify} from "node:util";
+import {createPanelStore} from "./panel-store.mjs";
 import {setTimeout as delay} from "node:timers/promises";
 import {fileURLToPath} from "node:url";
 import fs from "node:fs";
@@ -30,6 +32,8 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
   const vault=macSettings?.vault??(fs.existsSync(path.join(local,"LocalCodexSwitch"))?path.join(local,"LocalCodexSwitch"):path.join(local,"CodexProfileDock"));
   const home=path.resolve(codexHome || path.join(userProfile, ".codex"));
   const mac=macSettings?createMacPlatform({...macSettings,codexHome:home}):null;
+  const store=createPanelStore(state);
+  let infoTask,infoKey;
   const pending=new Map();
   const usage=new Map();
   const lock=path.join(state,"operation.lock");
@@ -92,14 +96,48 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
     return operation;
   }
   return {
+    async accountInfo(){
+      let key;
+      try{const stat=fs.statSync(path.join(home,"auth.json"));key=stat.mtimeMs+":"+stat.size+":"+profiles().map(name=>name+":"+profileDigest(name)).join(",");}catch{key="unavailable";}
+      if(!infoTask||infoKey!==key){
+        infoKey=key;
+        const task=(async()=>{
+          if(mac)return mac.accountInfo();
+          const powershell=path.join(process.env.SystemRoot,"System32","WindowsPowerShell","v1.0","powershell.exe");
+          const script=fileURLToPath(new URL("./scripts/Switch-Codex.ps1",import.meta.url));
+          const {stdout}=await promisify(execFile)(powershell,["-NoProfile","-ExecutionPolicy","RemoteSigned","-File",script,
+            "-Action","Info","-Vault",vault,"-CodexHome",home],{timeout:5000,windowsHide:true,maxBuffer:128*1024});
+          return JSON.parse(stdout);
+        })().catch(()=>({current:[],activeState:"unknown",loginStates:{}}));
+        infoTask=task;
+        setTimeout(()=>{if(infoTask===task)infoTask=null;},60000).unref();
+      }
+      return infoTask;
+    },
+    moveProfile({name,direction}={}){
+      if(fs.existsSync(lock))throw new PanelError("operation_busy");
+      if(!validName(name)||!profiles().includes(name)||![1,-1].includes(direction))throw new PanelError("profile_missing");
+      fs.mkdirSync(state,{recursive:true,mode:0o700});
+      const fd=fs.openSync(lock,"wx");
+      try{store.move(profiles(),name,direction);}finally{fs.closeSync(fd);fs.rmSync(lock);}
+      return {};
+    },
+    confirmActiveAccount(operation){
+      let handle;
+      try{
+        handle=fs.openSync(lock,"wx");
+        const file=path.join(state,"latest.json"),latest=JSON.parse(fs.readFileSync(file,"utf8"));
+        if(latest.id===operation.id&&latest.status==="requested")fs.writeFileSync(file,JSON.stringify({...latest,status:"verified"}));
+      }catch{}finally{if(handle!==undefined){fs.closeSync(handle);fs.rmSync(lock,{force:true});}}
+    },
     stateDir:state,
     startupOptions:{state,local,userProfile,codexHome:home,mac},
     list(){
       const operation=inspectOperation();
-      const names=profiles();
+      const names=store.order(profiles());
       const profileRefs=Object.fromEntries(names.map(name=>[name,profileRef(name)]));
       return {profiles:names,busy:fs.existsSync(lock),operation,profileRefs,
-        usage:Object.fromEntries(names.filter(name=>usage.has(profileRefs[name])).map(name=>[name,usage.get(profileRefs[name])]))};
+        usage:Object.fromEntries(names.map(name=>{try{return [name,usage.get(profileRefs[name])??store.usage(profileDigest(name))];}catch{return [name,null];}}).filter(([,value])=>value))};
     },
     async refreshUsage({name}={}){
       if(!validName(name)||!profiles().includes(name))throw Error("usage_profile_missing");
@@ -111,11 +149,20 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
         const snapshot={windows,checkedAt:new Date().toISOString()};
         if(profileRef(name)!==ref)throw Error("usage_profile_missing");
         usage.set(ref,snapshot);
+        store.saveUsage(profileDigest(name),snapshot);
         return snapshot;
       }catch(error){
         throw Error(/^usage_(auth_unavailable|cli_unavailable|expired|no_windows|timeout|unavailable|profile_missing)$/.test(error.message)
           ? error.message : "usage_unavailable");
       }
+    },
+    async refreshUsageBatch({names}={}){
+      if(!Array.isArray(names)||!names.length||names.length>50||names.some(name=>!validName(name)||!profiles().includes(name)))throw new PanelError("profile_missing");
+      const snapshots={},errors={};
+      mac?.beginUsageRound();
+      try{for(const name of new Set(names)){try{snapshots[name]=await this.refreshUsage({name});}catch(error){errors[name]=error.message;}}}
+      finally{mac?.endUsageRound();}
+      return {usage:snapshots,errors};
     },
     async renameProfile({name,newName}={}){
       if(!validName(name)||!validName(newName)||/^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(newName)){
@@ -127,6 +174,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       if(names.some(other=>other!==name&&other.toLowerCase()===newName.toLowerCase())){
         throw new PanelError("rename_exists");
       }
+      const oldKey=profileDigest(name),snapshot=usage.get(profileRef(name))??store.usage(oldKey);
       const ticket=randomUUID();
       pending.set(ticket,{action:"Rename",name,newName,expires:Date.now()+120000});
       const {id}=await this.start({ticket});
@@ -137,7 +185,13 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
           let result;
           try{result=JSON.parse(fs.readFileSync(receipt,"utf8"));}catch{}
           if(result?.id===id){
-            if(result.status==="renamed")return {name:newName};
+            if(result.status==="renamed"){
+              store.renamed(profiles(),name,newName);
+              if(snapshot)store.saveUsage(profileDigest(newName),snapshot);
+              store.forgetUsage(oldKey);
+              infoTask=null;
+              return {name:newName};
+            }
             const knownReasons=["rename_exists","rename_missing","rename_busy","rename_invalid"];
             throw new PanelError(knownReasons.includes(result.reason)?result.reason:"rename_failed");
           }
@@ -147,10 +201,10 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       }finally{fs.rmSync(receipt,{force:true});}
     },
     prepare({action,name}={}){
-      if(!["Save","Switch"].includes(action)||!validName(name))throw new PanelError("alias_invalid");
-      if(action==="Switch"&&!profiles().includes(name))throw new PanelError("profile_missing");
+      if(!["Save","Switch","Delete"].includes(action)||!validName(name))throw new PanelError("alias_invalid");
+      if(action!=="Save"&&!profiles().includes(name))throw new PanelError("profile_missing");
       pending.clear();
-      const ticket=randomUUID();pending.set(ticket,{action,name,profileDigest:action==="Switch"?profileDigest(name):null,expires:Date.now()+120000});
+      const ticket=randomUUID();pending.set(ticket,{action,name,profileDigest:action!=="Save"?profileDigest(name):null,expires:Date.now()+120000});
       return {ticket,action,name};
     },
     probe(){
@@ -161,16 +215,33 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
       const intent=pending.get(ticket);pending.delete(ticket);
       if(!intent||intent.expires<Date.now())throw new PanelError("ticket_expired");
       if(intent.action==="Switch"&&!profiles().includes(intent.name))throw new PanelError("profile_missing");
-      if(intent.action==="Switch"&&profileDigest(intent.name)!==intent.profileDigest)throw new PanelError("profile_changed");
+      if(intent.action!=="Save"&&intent.action!=="Probe"&&intent.action!=="Rename"&&profileDigest(intent.name)!==intent.profileDigest)throw new PanelError("profile_changed");
       fs.mkdirSync(state,{recursive:true,mode:0o700});
       inspectOperation();
       let handle;
       try{handle=fs.openSync(lock,"wx");}catch(e){if(e.code==="EEXIST")throw new PanelError("operation_busy");throw e;}
       const id=randomUUID();
       try{
+        if(intent.action==="Delete"){
+          fs.writeFileSync(handle,id);
+          const key=profileDigest(intent.name);
+          if(mac){try{await mac.vault.remove(intent.name);}finally{mac.close();}}
+          else {
+            const executable=path.join(process.env.SystemRoot,"System32","WindowsPowerShell","v1.0","powershell.exe");
+            await promisify(execFile)(executable,["-NoProfile","-ExecutionPolicy","RemoteSigned","-File",
+              fileURLToPath(new URL("./scripts/Switch-Codex.ps1",import.meta.url)),
+              "-Action","Delete","-Name",intent.name,"-Vault",vault,"-CodexHome",home],{timeout:10000,windowsHide:true});
+          }
+          store.forgetUsage(key);
+          infoTask=null;
+          fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,kind:"Delete",name:intent.name,status:"deleted",updated:new Date().toISOString()}),{mode:0o600});
+          fs.closeSync(handle);handle=undefined;
+          fs.rmSync(lock);
+          return {id,status:"deleted"};
+        }
         fs.writeFileSync(handle,id);fs.closeSync(handle);handle=undefined;
         if(intent.action==="Switch"&&!profiles().includes(intent.name))throw Error("profile_missing");
-        fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"queued",kind:intent.action,updated:new Date().toISOString()}));
+        fs.writeFileSync(path.join(state,"latest.json"),JSON.stringify({id,status:"queued",kind:intent.action,name:intent.name,updated:new Date().toISOString()}));
         const args=["-Action",intent.action,"-Name",intent.name,"-OperationId",id];
         if(intent.action==="Rename")args.push("-NewName",intent.newName);
         await run(args);
@@ -200,6 +271,7 @@ export function createBackend({local=process.env.LOCALAPPDATA, userProfile=proce
         }
 
         if(reason==="profile_missing")throw new PanelError("profile_missing");
+        if(intent.action==="Delete")throw new PanelError("delete_failed");
         throw new PanelError("worker_start_failed",reason);
       }
       return {id,status:"queued"};

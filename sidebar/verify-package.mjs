@@ -14,7 +14,7 @@ export function verifyPackage(directory=root){
  const signature=Buffer.from(fs.readFileSync(path.join(base,"release-manifest.sig"),"utf8").trim(),"base64");
  if(!verify("sha256",manifest,publicKey,signature))throw Error("Profile Dock release signature is invalid.");
  const release=JSON.parse(manifest);
- if(release.version!=="0.9.1"||!Array.isArray(release.files))throw Error("Unexpected Profile Dock release.");
+ if(release.version!=="0.10.0"||!Array.isArray(release.files))throw Error("Unexpected Profile Dock release.");
  const paths=new Set();
  for(const entry of release.files){
   if(typeof entry.path!=="string"||entry.path.includes("\\")||entry.path.split("/").some(p=>!p||p==="."||p==="..")||
@@ -29,7 +29,7 @@ export function verifyPackage(directory=root){
   const digest=createHash("sha256").update(fs.readFileSync(cursor)).digest("hex");
   if(digest!==entry.sha256)throw Error("Profile Dock file integrity check failed: "+entry.path);
  }
- for(const required of ["verify-package.mjs","Setup-Profile-Dock.ps1","macos/native.m","plugins/sidebar/server.mjs"]){
+ for(const required of ["verify-package.mjs","Setup-Profile-Dock.ps1","macos/native.m","plugins/sidebar/server.mjs","plugins/sidebar/panel-store.mjs"]){
   if(!paths.has(required))throw Error("Required release file is not signed.");
  }
  return release;

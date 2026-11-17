@@ -59,6 +59,15 @@ try {
   await run("Switch", "Work");
   assert.deepEqual(active(), second);
   assert.deepEqual(await vault.read("Archive"), updated);
+  assert.deepEqual(vault.info(active()).current,["Work"]);
+  assert.equal(vault.info(first).activeState,"saved");
+  const metadata=fs.readdirSync(path.join(root,"profiles")).filter(name=>name.endsWith(".info")).map(name=>fs.readFileSync(path.join(root,"profiles",name),"utf8")).join("");
+  assert.equal(metadata.includes("fixture"),false);
+  const count=secrets.size;
+  await vault.remove("Work");
+  assert.equal(secrets.size,count-1);
+  assert.deepEqual(active(),second);
+  assert.equal(vault.info(active()).activeState,"unsaved");
   if (process.platform !== "win32") assert.equal(fs.statSync(auth).mode & 0o777, 0o600);
   console.log("PASS macOS account records, alias conflicts, refreshed credentials, and closed-app write guard");
 } finally {

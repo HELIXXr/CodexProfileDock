@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFile, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomUUID,createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 import { setTimeout as delay } from "node:timers/promises";
@@ -45,7 +45,9 @@ export function parseMacAuth(bytes) {
     const { iss, sub } = JSON.parse(Buffer.from(jwt[1], "base64url").toString("utf8"));
     if (typeof iss !== "string" || !iss || typeof sub !== "string" || !sub) throw Error();
     const accountId = typeof account_id === "string" ? account_id : "";
-    return { identity: JSON.stringify([iss, sub, accountId]), accessToken: access_token, chatgptAccountId: accountId };
+    let expiresAt=null;
+    try{const claims=JSON.parse(Buffer.from(access_token.split(".")[1],"base64url"));if(Number.isFinite(claims.exp))expiresAt=claims.exp*1000;}catch{}
+    return { identity: JSON.stringify([iss, sub, accountId]), accessToken: access_token, chatgptAccountId: accountId,expiresAt };
   } catch {
     throw Error("mac_file_auth_required");
   }
@@ -101,7 +103,9 @@ export function createMacVault(directory, keychain) {
       try { record=JSON.parse(bytes.toString("utf8")); } catch { throw Error("mac_keychain_unavailable"); }
       if(record.profileDockFormat===1){
         if(record.alias!==name)throw Error("profile_changed");
-        return Buffer.from(record.auth,"base64");
+        const auth=Buffer.from(record.auth,"base64");
+        this.remember(name,auth);
+        return auth;
       }
       // Adoption of pre-hardening records happens only after user-authorized access.
       parseMacAuth(bytes);
@@ -120,7 +124,40 @@ export function createMacVault(directory, keychain) {
         await keychain("delete", id).catch(() => {});
         throw error;
       }
-      if (oldId) await keychain("delete", oldId).catch(() => {});
+      this.remember(name,bytes);
+      if (oldId) {
+        await keychain("delete", oldId).catch(() => {});
+        fs.rmSync(path.join(directory,oldId+".info"),{force:true});
+      }
+    },
+    remember(name,bytes){
+      const auth=parseMacAuth(bytes);
+      writePrivateAtomic(path.join(directory,itemId(name)+".info"),JSON.stringify({
+        identity:createHash("sha256").update(auth.identity).digest("hex"),expiresAt:auth.expiresAt
+      }));
+    },
+    info(active){
+      const current=[],loginStates={};
+      let identity,activeExpiry,unknown=false;
+      try{const parsed=parseMacAuth(active);identity=createHash("sha256").update(parsed.identity).digest("hex");activeExpiry=parsed.expiresAt;}catch{}
+      for(const name of names()){
+        try {
+          const metadata=JSON.parse(readFile(path.join(directory,itemId(name)+".info"),2048));
+          if(identity&&metadata.identity===identity)current.push(name);
+          const expiry=identity&&metadata.identity===identity?activeExpiry:metadata.expiresAt;
+          loginStates[name]=Number.isFinite(expiry)&&expiry<=Date.now()?"expired":"unchecked";
+        }catch{unknown=true;loginStates[name]="unchecked";}
+      }
+      return {current,activeState:identity?(current.length?"saved":unknown?"unknown":"unsaved"):"unknown",loginStates};
+    },
+    async remove(name){
+      await this.read(name);
+      const currentId=itemId(name);
+      const tombstone=path.join(directory,"."+randomUUID()+".delete");
+      fs.renameSync(file(name),tombstone);
+      try{await keychain("delete",currentId);}catch(error){fs.renameSync(tombstone,file(name));throw error;}
+      fs.rmSync(tombstone);
+      fs.rmSync(path.join(directory,currentId+".info"),{force:true});
     },
     async rename(name, newName) {
       const existing = names();
@@ -141,6 +178,7 @@ export function createMacVault(directory, keychain) {
       }
       fs.rmSync(previous);
       await keychain("delete",oldId).catch(()=>{});
+      fs.rmSync(path.join(directory,oldId+".info"),{force:true});
     },
   };
 }
@@ -190,7 +228,7 @@ export async function readMacAuthMode(command, codexHome) {
   const send = (method, id, params = {}) => child.stdin.write(JSON.stringify({ method, id, params }) + "\n");
   let mode, requirement, readConfig = false, readRequirements = false;
   try {
-    send("initialize", 1, { clientInfo: { name: "profile_dock", version: "0.9.0" } });
+    send("initialize", 1, { clientInfo: { name: "profile_dock", version: "0.10.0" } });
     for await (const line of createInterface({ input: child.stdout, crlfDelay: Infinity })) {
       const message = JSON.parse(line);
       if (![1, 2, 3].includes(message.id)) continue;
@@ -236,7 +274,7 @@ export function launchMacWorker(script, args) {
 export function createMacPlatform({ support, vault, codexHome }) {
   const native = path.join(support, "bin", "profile-dock-native");
   const auth = path.join(codexHome, "auth.json");
-  let session, pending=new Map(), counter=0;
+  let session, pending=new Map(), counter=0,usageRound=false;
   function closeSession(){
     session?.stdin.end();
     session=null;
@@ -323,6 +361,9 @@ export function createMacPlatform({ support, vault, codexHome }) {
   return {
     vault: platformVault,
     close:closeSession,
+    beginUsageRound(){usageRound=true;},
+    endUsageRound(){usageRound=false;closeSession();},
+    accountInfo(){let active;try{active=readActive(auth);}catch{};return platformVault.info(active);},
     async probe() {
       try {
         const { stdout } = await exec(native, ["probe"], { timeout: 4000 });
@@ -356,9 +397,9 @@ export function createMacPlatform({ support, vault, codexHome }) {
         if (active.identity === saved.identity) saved = active;
       } catch {}
       return await queryRateLimits({ command: codexExecutable(), args: appServerArgs }, saved, state);
-      } finally { closeSession(); }
+      } finally { if(!usageRound)closeSession(); }
     },
-    async run(action, name) {
+    async run(action, name, progress=()=>{}) {
       try {
       const command = codexExecutable();
       if (await readMacAuthMode(command, codexHome) !== "file") throw Error("mac_file_auth_required");
@@ -366,6 +407,7 @@ export function createMacPlatform({ support, vault, codexHome }) {
       if (!app.pid || !app.started || !path.isAbsolute(app.path)) throw Error("mac_desktop_unavailable");
       await assertSigned(app);
       await planAccountAction({ action, name, auth, vault: platformVault });
+      progress("wait_for_exit");
       let result = "manual";
       try {
         await exec(native, ["quit", String(app.pid), String(app.started)], { timeout: 5000 }).catch(() => {
@@ -381,11 +423,14 @@ export function createMacPlatform({ support, vault, codexHome }) {
             await delay(250);
           }
         }
+        progress("account_write");
         await applyMacAccountAction({ action, name, auth, vault: platformVault, assertClosed: () => assertClosed(app) });
+        progress("account_written");
       } finally {
         try {
           if (!(await desktop()).pid) {
             await assertSigned(app);
+            progress("reopen");
             await exec("/usr/bin/open", ["-a", app.path], { timeout: 6000 });
             result = "requested";
           }

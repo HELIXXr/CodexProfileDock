@@ -16,12 +16,12 @@ function Test-OwnLock {
 }
 function Write-State($status,$reason) {
  if(!(Test-OwnLock)){return}
- $data=@{id=$OperationId;status=$status;kind=$Action;reason=$reason;pid=$PID;stage=$checkpoint;updated=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress
+ $data=@{id=$OperationId;status=$status;kind=$Action;name=$Name;reason=$reason;pid=$PID;stage=$script:checkpoint;updated=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress
  $temp=Join-Path $StateDir ($OperationId+'.tmp')
  [IO.File]::WriteAllText($temp,$data,[Text.UTF8Encoding]::new($false))
  $target=Join-Path $StateDir 'latest.json'
  if([IO.File]::Exists($target)){[IO.File]::Replace($temp,$target,[NullString]::Value)}else{[IO.File]::Move($temp,$target)}
- if($checkpoint -eq 'rename' -and $status -ne 'running'){
+ if($script:checkpoint -eq 'rename' -and $status -ne 'running'){
    $receipt=Join-Path $StateDir ($OperationId+'.rename-result')
    [IO.File]::WriteAllText($receipt,$data,[Text.UTF8Encoding]::new($false))
  }
@@ -32,7 +32,7 @@ if(!(Test-OwnLock)){
  return
 }
 $phase='worker_forms'
-$checkpoint='startup'
+$script:checkpoint='startup'
 try {
  Add-Type -AssemblyName System.Windows.Forms
  $phase='worker_script'
@@ -52,23 +52,26 @@ try {
  if($Action -eq 'Probe'){Write-State 'probe_ok';return}
  if($Action -eq 'Rename'){
    $phase='rename_error'
-   $checkpoint='rename'
+   $script:checkpoint='rename'
    Write-State 'running'
    $result=& (Join-Path $PSScriptRoot 'Switch-Codex.ps1') -Action Rename -Name $Name -NewName $NewName -Vault $Vault -CodexHome $CodexHome
    if($result -eq 'rename_ok'){Write-State 'renamed'}else{Write-State 'failed' $result}
    return
  }
  $phase='operation'
- $checkpoint='wait_for_exit'
+ $script:checkpoint='wait_for_exit'
  Write-State 'running'
  $result=Invoke-DockRestartSwitch -SwitchAccount {
-   $checkpoint='account_write'
+   $script:checkpoint='account_write'
    Write-State 'running'
    $null=& (Join-Path $PSScriptRoot 'Switch-Codex.ps1') -Action $Action -Name $Name -Vault $Vault -CodexHome $CodexHome
-   $checkpoint='account_written'
+   $script:checkpoint='account_written'
    Write-State 'running'
- } -Progress {param($message)} -Pump {}
- $checkpoint='finished'
+ } -Progress {param($message)
+   if($script:checkpoint -eq 'account_written'){$script:checkpoint='reopen'}
+   Write-State 'running'
+ } -Pump {}
+ $script:checkpoint='finished'
  if($result -eq 'Manual'){Write-State 'manual'}else{Write-State 'requested'}
 }catch{
  if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace ('worker_error '+$phase+' '+$_.Exception.GetType().Name) }
