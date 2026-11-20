@@ -234,6 +234,11 @@ const messages={
  operation_requested:["The account action finished. Codex was asked to reopen. Verify the active account.","上次账号操作已完成，并已请求重开 Codex。请核对当前账号。"],
  operation_manual:["The account action finished. Open Codex and verify the active account.","账号操作已完成，请手动打开 Codex 并核对账号。"],
  operation_incomplete:["The last action did not complete. Verify the active account and fully quit Codex before retrying.","上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。"],
+ dock_desktop_unavailable:["The Windows launch entry for Codex could not be found. Check the desktop installation.","找不到 Codex 的 Windows 启动入口。请检查桌面版安装。"],
+ dock_external_process:["Another Codex process blocked the account change. Close Codex sessions in VS Code or terminals, then retry.","其他 Codex 进程阻止了账号操作。请关闭 VS Code 或终端里的 Codex 会话，再重试。"],
+ dock_quit_not_requested:["Could not request Codex to quit. Bring its window to the foreground, then retry.","未能请求 Codex 退出。请将 Codex 窗口切到前台后重试。"],
+ dock_desktop_still_running:["Codex did not finish quitting. Check for a quit prompt or a running task before retrying.","Codex 未能完全退出。请检查退出提示或运行中的任务，再重试。"],
+ dock_recovery_failed:["The account action did not complete and Codex could not reopen. Open Codex manually and check the active account.","账号操作未完成，且未能自动重开 Codex。请手动打开并核对当前账号。"],
  operation_interrupted:["The last action was interrupted. Verify the active account before retrying.","上次操作被中断。未自动重试，请先核对当前账号。"],
  rename_queued:["Starting the rename…","正在启动重命名…"],
  rename_running:["Saving the new alias…","正在保存新别名…"],
@@ -574,7 +579,7 @@ $("yes").onclick=async()=>{
 applyLocale(document.documentElement.lang);
 (async()=>{
  try{
-  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.10.1"},appCapabilities:{}});
+  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.10.2"},appCapabilities:{}});
   applyLocale(initialized?.hostContext?.locale||document.documentElement.lang);
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);

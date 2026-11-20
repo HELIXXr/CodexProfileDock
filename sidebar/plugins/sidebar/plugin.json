@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "helix-codex-profile-dock-sidebar",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Local account panel for Codex Desktop on Windows and macOS.",
   "extensions": {
     "com.openai": {

@@ -14,7 +14,7 @@ export function verifyPackage(directory=root){
  const signature=Buffer.from(fs.readFileSync(path.join(base,"release-manifest.sig"),"utf8").trim(),"base64");
  if(!verify("sha256",manifest,publicKey,signature))throw Error("Profile Dock release signature is invalid.");
  const release=JSON.parse(manifest);
- if(release.version!=="0.10.1"||!Array.isArray(release.files))throw Error("Unexpected Profile Dock release.");
+ if(release.version!=="0.10.2"||!Array.isArray(release.files))throw Error("Unexpected Profile Dock release.");
  const paths=new Set();
  for(const entry of release.files){
   if(typeof entry.path!=="string"||entry.path.includes("\\")||entry.path.split("/").some(p=>!p||p==="."||p==="..")||

@@ -10,6 +10,7 @@ function Get-DockCodexDesktop {
     [pscustomobject]@{
         AppID = $entries[0].AppID
         Root = $package[0].InstallLocation.TrimEnd('\') + '\'
+        RuntimeRoot = (Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\bin').TrimEnd('\') + '\'
     }
 }
 
@@ -73,66 +74,104 @@ function Open-DockCodexDesktop($desktop) {
     Start-Process -FilePath (Join-Path $env:WINDIR 'explorer.exe') -ArgumentList "shell:AppsFolder\$($desktop.AppID)" -WindowStyle Hidden -ErrorAction Stop
 }
 
+function Start-DockCodexDesktop($desktop, [scriptblock]$Pump, [int]$TimeoutSeconds) {
+    Open-DockCodexDesktop $desktop
+    $wait = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        if (@(Get-DockCodexDesktopProcesses $desktop @(Get-DockCodexProcesses)).Count) { return $true }
+        if ($wait.Elapsed.TotalSeconds -ge $TimeoutSeconds) { return $false }
+        & $Pump
+        Start-Sleep -Milliseconds 150
+    } while ($true)
+}
+
+function Throw-DockRestartError([string]$Reason, [string]$Message) {
+    $errorWithReason = [InvalidOperationException]::new($Message)
+    $errorWithReason.Data['ProfileDockReason'] = $Reason
+    throw $errorWithReason
+}
+
 function Invoke-DockRestartSwitch {
     param(
         [Parameter(Mandatory)][scriptblock]$SwitchAccount,
         [Parameter(Mandatory)][scriptblock]$Progress,
         [Parameter(Mandatory)][scriptblock]$Pump,
-        [ValidateRange(0,60)][int]$TimeoutSeconds = 15, [ValidateRange(0,30)][int]$FocusSeconds = 8
+        [ValidateRange(0,60)][int]$TimeoutSeconds = 15,
+        [ValidateRange(0,30)][int]$FocusSeconds = 8,
+        [ValidateRange(0,30)][int]$RelaunchSeconds = 12
     )
     $running = @(Get-DockCodexProcesses)
     $desktop = Get-DockCodexDesktop
-    if ($running.Count) {
-        if (!$desktop) { throw '无法识别 Codex 的重启入口。请手动退出 Codex 后再切换。' }
-        if (!@(Get-DockCodexDesktopProcesses $desktop $running).Count) {
-            throw '未找到可安全退出的 Codex 桌面进程。请先退出其他 Codex 或 CLI 进程。'
-        }
-        $windows = @(Get-DockCodexWindows $desktop $running)
-        if (!$windows.Count) {
-            & $Progress '正在恢复托盘中的 Codex 窗口…'
-            Open-DockCodexDesktop $desktop
-        }
-        & $Progress '正在通过 Ctrl+Q 请求 Codex 退出…'
-        $focusWait = [Diagnostics.Stopwatch]::StartNew()
-        $requested = $false
-        do {
-            $current = @(Get-DockCodexProcesses)
-            if (!$current.Count) { break }
-            foreach ($window in @(Get-DockCodexWindows $desktop $current)) {
-                if (Request-DockCodexQuit $window) { $requested = $true; break }
+    if ($running.Count -and !$desktop) {
+        Throw-DockRestartError 'dock_desktop_unavailable' '无法识别 Codex 的重启入口。'
+    }
+    if ($desktop) {
+        foreach ($process in $running) {
+            $path = $process.Path
+            if ($path -and !$path.StartsWith($desktop.Root,[StringComparison]::OrdinalIgnoreCase) -and
+                !$path.StartsWith($desktop.RuntimeRoot,[StringComparison]::OrdinalIgnoreCase)) {
+                Throw-DockRestartError 'dock_external_process' '请先结束 VS Code 或终端中的其他 Codex 会话，再重试。'
             }
-            if (!$requested -and $focusWait.Elapsed.TotalSeconds -lt $FocusSeconds) {
+        }
+    }
+    if ($running.Count -and !@(Get-DockCodexDesktopProcesses $desktop $running).Count) {
+        Throw-DockRestartError 'dock_external_process' '请先结束其他 Codex 会话，再重试。'
+    }
+
+    $quitAttempted = $false
+    try {
+        if ($running.Count) {
+            $windows = @(Get-DockCodexWindows $desktop $running)
+            if (!$windows.Count) {
+                & $Progress '正在恢复托盘中的 Codex 窗口…'
+                Open-DockCodexDesktop $desktop
+            }
+            & $Progress '正在通过 Ctrl+Q 请求 Codex 退出…'
+            $focusWait = [Diagnostics.Stopwatch]::StartNew()
+            $requested = $false
+            do {
+                $current = @(Get-DockCodexProcesses)
+                if (!$current.Count) { break }
+                foreach ($window in @(Get-DockCodexWindows $desktop $current)) {
+                    $quitAttempted = $true
+                    if (Request-DockCodexQuit $window) { $requested = $true; break }
+                }
+                if (!$requested -and $focusWait.Elapsed.TotalSeconds -lt $FocusSeconds) {
+                    & $Pump
+                    Start-Sleep -Milliseconds 150
+                }
+            } while (!$requested -and $focusWait.Elapsed.TotalSeconds -lt $FocusSeconds)
+            if (!$requested -and @(Get-DockCodexDesktopProcesses $desktop @(Get-DockCodexProcesses)).Count) {
+                Throw-DockRestartError 'dock_quit_not_requested' '无法把 Codex 置于前台并请求退出。'
+            }
+            $wait = [Diagnostics.Stopwatch]::StartNew()
+            while (($remaining = @(Get-DockCodexProcesses)).Count) {
+                if ($wait.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
+                    if (@(Get-DockCodexDesktopProcesses $desktop $remaining).Count) {
+                        Throw-DockRestartError 'dock_desktop_still_running' '桌面版 Codex 尚未完全退出。'
+                    }
+                    Throw-DockRestartError 'dock_external_process' '仍有其他 Codex 进程在运行，账号未切换。'
+                }
                 & $Pump
                 Start-Sleep -Milliseconds 150
             }
-        } while (!$requested -and $focusWait.Elapsed.TotalSeconds -lt $FocusSeconds)
-        if (!$requested -and @(Get-DockCodexProcesses).Count) {
-            throw '无法把 Codex 置于前台并请求退出，账号未切换。请手动完全退出后重试。'
         }
-        $wait = [Diagnostics.Stopwatch]::StartNew()
-        while (@(Get-DockCodexProcesses).Count) {
-            if ($wait.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
-                throw 'Codex 或 CLI 尚未完全退出，账号未切换。请从托盘退出后重试。'
-            }
-            & $Pump
-            Start-Sleep -Milliseconds 150
-        }
-    }
-
-    & $Progress '正在切换账号…'
-    try {
+        & $Progress '正在切换账号…'
         & $SwitchAccount
     } catch {
-        $failure = $_.Exception.Message
-        if ($running.Count -and $desktop -and !@(Get-DockCodexProcesses).Count) {
-            try { Open-DockCodexDesktop $desktop } catch {
-                throw "账号未切换，且未能重开 Codex。请手动打开。原因：$failure"
+        if ($quitAttempted -and !@(Get-DockCodexDesktopProcesses $desktop @(Get-DockCodexProcesses)).Count) {
+            $reopened = $false
+            try { $reopened = Start-DockCodexDesktop $desktop $Pump $RelaunchSeconds } catch {}
+            if (!$reopened) {
+                Throw-DockRestartError 'dock_recovery_failed' '账号操作未完成，且未能重开 Codex。请手动打开。'
             }
         }
-        throw "账号未切换。$failure"
+        throw
     }
     if (!$desktop) { return 'Manual' }
     & $Progress '正在重新打开 Codex…'
-    try { Open-DockCodexDesktop $desktop } catch { return 'Manual' }
+    try {
+        if (!(Start-DockCodexDesktop $desktop $Pump $RelaunchSeconds)) { return 'Manual' }
+    } catch { return 'Manual' }
     return 'Requested'
 }

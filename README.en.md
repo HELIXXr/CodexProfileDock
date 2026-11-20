@@ -10,7 +10,7 @@
 <p align="center">Switch ChatGPT accounts and check remaining quota from the Codex sidebar.</p>
 <p align="center">
   <a href="https://github.com/HELIXXr/CodexProfileDock/releases/latest"><strong>Download for Windows</strong></a>
-  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.10.1"><strong>Download macOS Beta</strong></a>
+  · <a href="https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.10.2"><strong>Download macOS Beta</strong></a>
   · <a href="README.md">简体中文</a>
   · <a href="#installation">Installation</a>
 </p>
@@ -47,10 +47,10 @@ To upgrade, run the installer from the new release. To uninstall, run `Uninstall
 ### macOS Beta
 
 1. Install Codex Desktop, Codex CLI, Node.js 22 or later, and Apple Command Line Tools. If the tools are missing, run `xcode-select --install` in Terminal.
-2. Download the [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.10.1) and extract the entire ZIP. Run `sidebar/macos/Install-Profile-Dock.command`.
+2. Download the [macOS Beta](https://github.com/HELIXXr/CodexProfileDock/releases/tag/v0.10.2) and extract the entire ZIP. Run `sidebar/macos/Install-Profile-Dock.command`.
 3. Set `cli_auth_credentials_store = "file"` at the top level of your Codex user config (`~/.codex/config.toml`). Fully quit and reopen Codex, sign in again if needed, then open **Profile Dock** from the sidebar.
 
-Installation, uninstallation, Keychain access, and background startup passed on Apple Silicon and Intel macOS 15 runners. Switching real accounts in Codex Desktop still needs an end-to-end test on a Mac. [Full macOS guide](https://github.com/HELIXXr/CodexProfileDock/blob/v0.10.1/sidebar/README.macOS.md) · [Continuous verification](https://github.com/HELIXXr/CodexProfileDock/actions/workflows/macos.yml)
+Installation, uninstallation, Keychain access, and background startup passed on Apple Silicon and Intel macOS 15 runners. Switching real accounts in Codex Desktop still needs an end-to-end test on a Mac. [Full macOS guide](https://github.com/HELIXXr/CodexProfileDock/blob/v0.10.2/sidebar/README.macOS.md) · [Continuous verification](https://github.com/HELIXXr/CodexProfileDock/actions/workflows/macos.yml)
 
 ## Save and switch accounts
 

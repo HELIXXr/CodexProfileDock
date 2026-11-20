@@ -75,7 +75,9 @@ try {
  if($result -eq 'Manual'){Write-State 'manual'}else{Write-State 'requested'}
 }catch{
  if (Get-Command Write-DockTrace -ErrorAction SilentlyContinue) { Write-DockTrace ('worker_error '+$phase+' '+$_.Exception.GetType().Name) }
- Write-State 'failed' $phase
+ $reason=$_.Exception.Data['ProfileDockReason']
+ if($reason -notin 'dock_desktop_unavailable','dock_external_process','dock_quit_not_requested','dock_desktop_still_running','dock_recovery_failed'){$reason=$phase}
+ Write-State 'failed' $reason
 }finally{
  foreach($marker in $ready,$go){if(Test-Path -LiteralPath $marker){Remove-Item -LiteralPath $marker}}
  if(Test-OwnLock){Remove-Item -LiteralPath $lock}

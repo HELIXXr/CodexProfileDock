@@ -1,5 +1,5 @@
 {
-  "version": "0.10.1",
+  "version": "0.10.2",
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -11,23 +11,23 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "3fec49da6a9c41f7a8937be62688f9dccd80a2a150879dba381c8471013fcba3"
+      "sha256": "d21401323ed9b380398c29d71825bdefc49e28dc48b7c1183b3a7b62daad0bd9"
     },
     {
       "path": "README.macOS.md",
-      "sha256": "870d91902b281c04f640df0e896ccc2c4ea7a7b731520b8422d6790b851870e8"
+      "sha256": "553b39f3f39463123420d47700e6b541c9a9154a4e6e7557b9bc88f41255d5b1"
     },
     {
       "path": "README.md",
-      "sha256": "0ced991cb120fc60300d116810838dedc9a882b84484b0b36efcf86515ea84f9"
+      "sha256": "edd9b8954b38e66b61e99057de413867520877c1efb91f43b93ff534419e8f9b"
     },
     {
       "path": "SECURITY.md",
-      "sha256": "b6c8d4888fdc685be780ddc3c7d18c17028a8530a4b63fb8711dd4ea3a6a829d"
+      "sha256": "c201301080c4f7fc4b776ef7f5174468845d28f9d4ad635de35ecd6f4cb7921f"
     },
     {
       "path": "Setup-Profile-Dock.ps1",
-      "sha256": "96205841c639ef674be16f0323b6e41336d09cac460dd0ab92a19164b5b0a3ec"
+      "sha256": "bb8242aeb2e75ef504ba2a17662381c1de26af73bf306c3b034fc00cbfe2a2ee"
     },
     {
       "path": "Uninstall-Profile-Dock.cmd",
@@ -71,7 +71,7 @@
     },
     {
       "path": "plugins/sidebar/macos.mjs",
-      "sha256": "92a013d0dfb0bbcf0f04e100f58dd0eca5973ae8eeb0d932aadd5196e52f9e46"
+      "sha256": "8a1fa42cfbfe3735c3f9175e9f86a8aea34bed9205f6efb8511138feaac511d7"
     },
     {
       "path": "plugins/sidebar/mcp.json",
@@ -83,11 +83,11 @@
     },
     {
       "path": "plugins/sidebar/plugin.json",
-      "sha256": "1d8f74c9f444e4abf963dedc898f9131b9a3509da8046aebe8525a955b643689"
+      "sha256": "f1e02c91fbb705d5c0a7b7e788f7594ec7843441ab1928df530501ba4190cd69"
     },
     {
       "path": "plugins/sidebar/scripts/Desktop-Restart.ps1",
-      "sha256": "9e941fe300e287b7859cc0ad3178305b269586f3d6b75f9ae1b50ed9f6916d7c"
+      "sha256": "7fb413c1000da24445e3e721880da6829309d07ca062acdddd6f30434be7f07a"
     },
     {
       "path": "plugins/sidebar/scripts/Get-DesktopSession.ps1",
@@ -103,7 +103,7 @@
     },
     {
       "path": "plugins/sidebar/scripts/Sidebar-Worker.ps1",
-      "sha256": "5653e94b0a6f49504cd5cc96b2018335157097a51496681099e896f833f216fd"
+      "sha256": "4683de379464bb7454afecfc1ff40dcdf2ab2131f84967fbf23527e1d3e5e052"
     },
     {
       "path": "plugins/sidebar/scripts/Switch-Codex.ps1",
@@ -115,11 +115,11 @@
     },
     {
       "path": "plugins/sidebar/server.mjs",
-      "sha256": "ed9e5c870f9831f7d69246c14deda7fa1ae1d6b9e2b41d69f93ff56d479cdd79"
+      "sha256": "6c309a8cf3616bdbe952ab79fbd9e2c73dfb3b22c40f98e4840863c2b6f6387f"
     },
     {
       "path": "plugins/sidebar/sidebar.html",
-      "sha256": "4027faa472b466b3430e6097358346ac23356e0fcceb37f79285c063c86e64e2"
+      "sha256": "d63c55d51618bfd48975ffb01fd69bbb9f2f2033f89d79aadf7db16fd607239b"
     },
     {
       "path": "plugins/sidebar/startup-worker.mjs",
@@ -131,11 +131,11 @@
     },
     {
       "path": "plugins/sidebar/usage.mjs",
-      "sha256": "060e6208caef586807dad29ee1a3b998626f092f95543304d9c44f95b6487257"
+      "sha256": "02e17a447f54696ab2252855b155043e0ab7b139eb3b0d5153bc94420359bc9b"
     },
     {
       "path": "verify-package.mjs",
-      "sha256": "96e419a020171a8843b3d6ac85bb3784f510fe82b4d805adf5d30f58c045e104"
+      "sha256": "295190a78f5de81a351de05d62f5a3ece238225aa3f5b2e8e0a45b1cf2bb4eff"
     }
   ]
 }

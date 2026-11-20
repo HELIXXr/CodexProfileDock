@@ -1,4 +1,4 @@
-# Codex Profile Dock 0.10.1 for Windows
+# Codex Profile Dock 0.10.2 for Windows
 
 [中文安装和使用说明](README.md)
 
@@ -26,7 +26,7 @@ Tested with the **x64 Microsoft Store installation**. Installs from the official
 
 Aliases can contain 1–32 ASCII letters, digits, hyphens, or underscores. Start with a letter or digit.
 
-## Account management in 0.10.1
+## Account management in 0.10.2
 
 - The active account is labeled and its Switch button is disabled. After reopening, the panel checks the target sign-in and reports a mismatch.
 - Deletion requires confirmation and removes the saved record, its migration copy, and quota cache. The active Codex sign-in and independent private backups stay intact.
