@@ -141,40 +141,38 @@ const messages={
  move_down:["Move down","下移"],
  retry_failed:["Retry failed","重试失败项"],
  confirm_delete:["Delete saved account “{name}”?","删除已保存账号「{name}」？"],
- delete_note:["This removes its saved sign-in and local quota cache. Your current sign-in stays active. Independent backups are kept.","将移除此账号的登录快照和本机额度缓存，当前登录不变，独立备份仍保留。"],
- delete_complete:["Saved account removed. Your current sign-in is unchanged.","已删除保存记录，当前登录未改变。"],
+ delete_note:["This removes the saved sign-in and quota cache. Your current sign-in and backups are kept.","将删除保存的登录记录和额度缓存。当前登录及独立备份保留。"],
+ delete_complete:["Saved account deleted.","已删除保存记录。"],
  delete_failed:["Could not confirm deletion. Refresh the account list before trying again.","未能确认删除完成，请刷新账号列表后再试。"],
  stage_exit:["1/4 · Waiting for Codex to quit…","1/4 · 正在等待 Codex 退出…"],
  stage_write:["2/4 · Updating the sign-in…","2/4 · 正在更新登录状态…"],
  stage_written:["3/4 · Sign-in updated. Preparing to reopen…","3/4 · 登录已更新，准备重开…"],
  stage_reopen:["3/4 · Reopening Codex…","3/4 · 正在重新打开 Codex…"],
  operation_verified:["4/4 · Confirmed: the active account is “{name}”.","4/4 · 已核对，当前登录为「{name}」。"],
- verify_pending:["Codex was asked to reopen. The active account cannot be verified yet; refresh to check.","已请求重开 Codex，暂时无法核对当前登录，请刷新核对。"],
- verify_mismatch:["The active sign-in does not match “{name}”. Check your Codex account before retrying.","当前登录与「{name}」不匹配，请先核对 Codex 账号，再决定是否重试。"],
+ verify_pending:["Waiting to verify the active account. Refresh to check.","暂未核对当前账号，请刷新。"],
+ verify_mismatch:["The active account differs from “{name}”. Check your sign-in before retrying.","当前登录与「{name}」不匹配，请核对后重试。"],
  resets_in:["in {time}","还剩 {time}"],
- old_snapshot:["Last successful result shown.","下方保留上次成功结果。"],
  refresh_done:["Quota refresh finished: {complete}/{total} accounts.","额度刷新完成：{complete}/{total} 个账号。"],
- retry_hint:["Use More actions to retry this account.","可在更多操作中单独重试此账号。"],
  title:["Codex account switcher","Codex 账号切换"],
  saved_accounts:["Saved accounts","已保存账号"],
  test_worker:["Test background","测试后台"],
  refresh:["Refresh","刷新"],
  refresh_progress:["Refresh {index}/{total}","刷新 {index}/{total}"],
  connecting:["Connecting…","正在连接…"],
- connecting_local:["Connecting to the local service…","正在连接本机服务…"],
+ connecting_local:["Connecting…","正在连接…"],
  rename_title:["Rename account","重命名账号"],
  rename_target:["Rename “{name}”","重命名「{name}」"],
  new_alias:["New alias","新别名"],
  save_alias:["Save alias","保存别名"],
  cancel:["Cancel","取消"],
  confirm_title:["Confirm action","确认操作"],
- confirm_note:["Save your work and wait for running tasks to finish. Codex will quit and reopen, and this panel will close.","请先保存工作，等待其他任务完成。Codex 会退出并自动重开，当前面板会关闭。"],
+ confirm_note:["Save your work and wait for tasks to finish. Codex will restart.","请先保存工作并等待任务结束。Codex 会重启。"],
  continue:["Confirm and continue","确认并继续"],
  save_title:["Save current account","保存当前账号"],
  alias_label:["Local alias (e.g. Personal)","本地别名（例如 Personal）"],
  save_account:["Save account","保存账号"],
- save_note:["Saving also restarts Codex so the latest sign-in can be saved.","保存也会退出并重开 Codex，以便保存最新登录状态。"],
- privacy:["Sign-in tokens are encrypted on this computer and are never sent to the chat model. Verify your active account after switching.","登录令牌保存在本机加密文件中，不会发送给聊天模型。操作后请核对 Codex 当前账号。"],
+ save_note:["Saving your sign-in restarts Codex.","保存账号会重启 Codex。"],
+ privacy:["Sign-in tokens are encrypted locally and kept out of chats.","登录令牌在本机加密保存，不发送给聊天模型。"],
  panel_timeout:["The service took too long to respond. Reopen the panel and try again.","服务响应超时，请重新打开面板后重试。"],
  request_failed:["The request failed. Try again.","请求失败，请重试。"],
  operation_failed:["The action could not be completed. Try again.","操作未完成，请重试。"],
@@ -188,10 +186,10 @@ const messages={
  rename_exists:["Another account already uses that alias.","此别名已被其他账号使用。"],
  rename_busy:["The account records are in use. Try again shortly.","账号记录正在使用，请稍后再试。"],
  rename_failed:["Could not rename the account. Refresh the list and try again.","无法重命名账号，请刷新列表后重试。"],
- rename_no_receipt:["Could not confirm the rename. Refresh the list to check.","未收到重命名回执，请刷新列表核对。"],
+ rename_no_receipt:["Rename unconfirmed. Refresh to check.","重命名未确认，请刷新核对。"],
  ticket_expired:["The confirmation expired. Select the account again.","确认已过期，请重新选择账号。"],
  operation_busy:["Another account action is in progress. Wait and try again.","有账号操作正在进行，请稍后再试。"],
- startup_busy:["The startup check and quota refresh are in progress.","正在运行启动自检和额度刷新，请稍候。"],
+ startup_busy:["Checking background and refreshing quotas…","正在自检并刷新额度…"],
  mac_file_auth_required:["Set Codex credential storage to file and sign in to ChatGPT again. See the macOS guide.","请按 macOS 指南将 Codex 登录存储设为 file，再重新登录 ChatGPT。"],
  mac_config_unavailable:["Could not verify Codex’s credential storage setting.","无法确认 Codex 的登录存储设置。"],
  mac_keychain_unavailable:["Profile Dock could not access the macOS login keychain.","Profile Dock 无法访问 macOS 登录钥匙串。"],
@@ -203,8 +201,8 @@ const messages={
  worker_start_failed:["The background task did not start. Your account was not changed. Diagnostic code: {reason}","后台未确认启动，已取消本次操作。账号未改变。诊断代码：{reason}"],
  usage_auth_unavailable:["Could not read this account’s saved sign-in.","无法读取此账号的登录快照。"],
  usage_cli_unavailable:["Could not find a runnable Codex App Server.","未找到可运行的 Codex App Server。"],
- usage_expired:["The saved sign-in expired. Sign in to this account in Codex and save it again.","登录快照已过期。请用此账号登录 Codex，保存后再查询。"],
- usage_no_windows:["OpenAI did not return quota windows for this account.","OpenAI 没有返回此账号的额度窗口。"],
+ usage_expired:["Saved sign-in expired. Sign in again and save the account.","登录记录已过期，请重新登录并保存。"],
+ usage_no_windows:["No quota data returned for this account.","未返回此账号的额度数据。"],
  usage_timeout:["The quota request timed out. Try again.","额度查询超时，请重试。"],
  usage_profile_missing:["This saved account is missing.","账号记录已不存在。"],
  usage_busy:["An account action is in progress. Try again shortly.","账号操作正在进行，请稍后再查。"],
@@ -229,17 +227,17 @@ const messages={
  rename:["Rename","重命名"],
  rename_account:["Rename {name}","重命名 {name}"],
  no_accounts:["No saved accounts yet.","还没有保存的账号。"],
- operation_queued:["Starting the background task…","正在确认本机后台启动…"],
+ operation_queued:["Starting background task…","正在启动后台…"],
  operation_running:["Applying the account action. Codex will close briefly.","正在退出并处理账号，Codex 会暂时关闭。"],
- operation_requested:["The account action finished. Codex was asked to reopen. Verify the active account.","上次账号操作已完成，并已请求重开 Codex。请核对当前账号。"],
+ operation_requested:["Reopen requested. Check the active account.","已请求重开 Codex，请核对账号。"],
  operation_manual:["The account action finished. Open Codex and verify the active account.","账号操作已完成，请手动打开 Codex 并核对账号。"],
- operation_incomplete:["The last action did not complete. Verify the active account and fully quit Codex before retrying.","上次操作未完成。请确认 Codex 已完全退出后再试；账号状态以 Codex 实际显示为准。"],
+ operation_incomplete:["Action incomplete. Check your sign-in and fully quit Codex before retrying.","操作未完成。请核对账号，完全退出 Codex 后再试。"],
  dock_desktop_unavailable:["The Windows launch entry for Codex could not be found. Check the desktop installation.","找不到 Codex 的 Windows 启动入口。请检查桌面版安装。"],
  dock_external_process:["Another Codex process blocked the account change. Close Codex sessions in VS Code or terminals, then retry.","其他 Codex 进程阻止了账号操作。请关闭 VS Code 或终端里的 Codex 会话，再重试。"],
  dock_quit_not_requested:["Could not request Codex to quit. Bring its window to the foreground, then retry.","未能请求 Codex 退出。请将 Codex 窗口切到前台后重试。"],
  dock_desktop_still_running:["Codex did not finish quitting. Check for a quit prompt or a running task before retrying.","Codex 未能完全退出。请检查退出提示或运行中的任务，再重试。"],
  dock_recovery_failed:["The account action did not complete and Codex could not reopen. Open Codex manually and check the active account.","账号操作未完成，且未能自动重开 Codex。请手动打开并核对当前账号。"],
- operation_interrupted:["The last action was interrupted. Verify the active account before retrying.","上次操作被中断。未自动重试，请先核对当前账号。"],
+ operation_interrupted:["Action interrupted. Check the active account before retrying.","操作中断，请核对账号后再试。"],
  rename_queued:["Starting the rename…","正在启动重命名…"],
  rename_running:["Saving the new alias…","正在保存新别名…"],
  rename_complete:["Account renamed.","账号已重命名。"],
@@ -251,8 +249,8 @@ const messages={
  probe_ok:["Background check passed. Codex and the active account were unchanged.","后台自检通过。没有退出 Codex，也没有改动账号。"],
  confirm_switch:["Switch to “{name}”?","切换到「{name}」？"],
  confirm_save:["Save the current sign-in as “{name}”?","将当前登录保存为「{name}」？"],
- probe_manual:["Testing the background task…","正在测试后台启动，不会退出 Codex 或改动账号…"],
- restart_requested:["The background task is ready. Codex will quit and reopen shortly.","已交给本机后台。Codex 即将退出，请等待重开。"]
+ probe_manual:["Testing background…","正在测试后台…"],
+ restart_requested:["Codex will restart shortly.","Codex 即将重启。"]
 };
 
 let language, dateFormat, percentFormat, durations, lastProfiles, refreshProgress, checkingProfile;
@@ -368,7 +366,7 @@ function renderUsage(summary,snapshot,errorCode){
   checked.textContent=t("last_checked",{time:dateFormat.format(new Date(snapshot.checkedAt))});
   summary.append(windows,checked);
  }
- if(errorCode){const error=document.createElement("p");error.className="usage-error";error.textContent=t(usageErrorCode(errorCode))+(snapshot?" "+t("old_snapshot"):"");summary.append(error);}
+ if(errorCode){const error=document.createElement("p");error.className="usage-error";error.textContent=t(usageErrorCode(errorCode));summary.append(error);}
  summary.hidden=!summary.hasChildNodes();
 }
 function quotaBadge(snapshot){
@@ -579,7 +577,7 @@ $("yes").onclick=async()=>{
 applyLocale(document.documentElement.lang);
 (async()=>{
  try{
-  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.10.2"},appCapabilities:{}});
+  const initialized=await request("ui/initialize",{protocolVersion:"2026-01-26",appInfo:{name:"Profile Dock",version:"0.10.3"},appCapabilities:{}});
   applyLocale(initialized?.hostContext?.locale||document.documentElement.lang);
   parent.postMessage({jsonrpc:"2.0",method:"ui/notifications/initialized",params:{}},"*");
   connected=true;await refresh();poll=setInterval(()=>{if(!usageLoading)void refresh();},3500);
